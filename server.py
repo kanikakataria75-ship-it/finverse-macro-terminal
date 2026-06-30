@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import List
 
 try:
-    from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+    from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
     from fastapi.middleware.cors import CORSMiddleware
     from pydantic import BaseModel
     import psycopg2
@@ -73,35 +73,45 @@ def get_db_connection():
         return None
 
 @app.get("/api/macro-metrics", response_model=List[AssetResponse])
-def get_macro_metrics():
-    conn = get_db_connection()
-    if not conn:
-        logger.warning("Using fallback dummy data due to DB connection failure.")
-        return [
-            {"asset_name": "Brent Crude", "ticker": "BZ=F", "current_price": 79.04, "delta_1d": 1.20, "delta_1w": 0.0, "delta_1m": 0.0},
-            {"asset_name": "DXY Index", "ticker": "DX-Y.NYB", "current_price": 104.20, "delta_1d": -0.42, "delta_1w": 0.0, "delta_1m": 0.0},
-        ]
-        
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT asset_name, ticker, current_price, delta_1d, baseline_1w, baseline_1m FROM macro_assets;")
-            rows = cur.fetchall()
+async def get_macro_metrics():
+    # Attempt up to 3 times to allow DB to catch up or start
+    for attempt in range(3):
+        conn = get_db_connection()
+        if not conn:
+            logger.warning(f"DB connection failed (Attempt {attempt+1}). Retrying in 2s...")
+            await asyncio.sleep(2)
+            continue
             
-            response_data = []
-            for row in rows:
-                baseline_1w = row.pop('baseline_1w', None)
-                baseline_1m = row.pop('baseline_1m', None)
-                current_price = row['current_price']
-                row['delta_1w'] = ((current_price - baseline_1w) / baseline_1w) * 100 if baseline_1w else 0.0
-                row['delta_1m'] = ((current_price - baseline_1m) / baseline_1m) * 100 if baseline_1m else 0.0
-                response_data.append(AssetResponse(**row))
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT asset_name, ticker, current_price, delta_1d, baseline_1w, baseline_1m FROM macro_assets;")
+                rows = cur.fetchall()
                 
-            return response_data
-    except Exception as e:
-        logger.error(f"Error executing query: {e}")
-        return []
-    finally:
-        conn.close()
+                if not rows:
+                    logger.warning(f"No rows found in macro_assets (Attempt {attempt+1}). Retrying in 2s...")
+                    conn.close()
+                    await asyncio.sleep(2)
+                    continue
+                
+                response_data = []
+                for row in rows:
+                    baseline_1w = row.pop('baseline_1w', None)
+                    baseline_1m = row.pop('baseline_1m', None)
+                    current_price = row['current_price']
+                    row['delta_1w'] = ((current_price - baseline_1w) / baseline_1w) * 100 if baseline_1w else 0.0
+                    row['delta_1m'] = ((current_price - baseline_1m) / baseline_1m) * 100 if baseline_1m else 0.0
+                    response_data.append(AssetResponse(**row))
+                    
+                conn.close()
+                return response_data
+        except Exception as e:
+            logger.error(f"Error executing query: {e}")
+            if conn:
+                conn.close()
+            await asyncio.sleep(2)
+            
+    # If all attempts fail, raise 503 so frontend can catch it and show the error UI
+    raise HTTPException(status_code=503, detail="Database is temporarily catching up or offline.")
 
 # ==========================================
 # LIVE TEXT INTEL FEED ENGINE (WEBSOCKETS)

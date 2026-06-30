@@ -63,7 +63,7 @@ python ticker_pipeline.py
 
 **Terminal Window 2 - Backend & WebSockets:**
 ```bash
-uvicorn server:app --reload --port 8000
+python -m uvicorn server:app --reload --port 8000
 ```
 
 **Browser:**
