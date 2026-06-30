@@ -1,5 +1,7 @@
 
-# Finverse World Macro Terminal
+# Finverse World Macro Terminal                <img width="480" height="480" alt="Happy Stock Market GIF by shremps" src="https://github.com/user-attachments/assets/52febd0a-e03e-4239-9267-59e1f47bc6da" />
+
+
 
 ![Finverse Macro Terminal](https://img.shields.io/badge/Status-Phase%202%20Complete-neon) ![FastAPI](https://img.shields.io/badge/Backend-FastAPI-blue) ![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-blue)
 
