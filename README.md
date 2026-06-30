@@ -1,10 +1,16 @@
-<img width="3439" height="113" alt="Screenshot 2026-06-30 203259" src="https://github.com/user-attachments/assets/d9cd5b8b-9db2-4e95-9923-553968d2cdce" />
-<img width="3435" height="1239" alt="Screenshot 2026-06-30 203243" src="https://github.com/user-attachments/assets/a749403c-fbbd-48e5-b764-3eca7a955bf5" />
+
 # Finverse World Macro Terminal
 
 ![Finverse Macro Terminal](https://img.shields.io/badge/Status-Phase%202%20Complete-neon) ![FastAPI](https://img.shields.io/badge/Backend-FastAPI-blue) ![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-blue)
 
 A high-density, cyberpunk-themed macro-economic terminal designed for zero-padding, ultra-compact real-time market intelligence gathering. 
+
+
+
+<img width="3439" height="113" alt="Screenshot 2026-06-30 203259" src="https://github.com/user-attachments/assets/d9cd5b8b-9db2-4e95-9923-553968d2cdce" />
+<img width="3435" height="1239" alt="Screenshot 2026-06-30 203243" src="https://github.com/user-attachments/assets/a749403c-fbbd-48e5-b764-3eca7a955bf5" />
+
+
 
 ## 🚀 Features
 
