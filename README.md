@@ -1,5 +1,5 @@
 
-# Finverse World Macro Terminal                <img width="480" height="480" alt="Happy Stock Market GIF by shremps" src="https://github.com/user-attachments/assets/52febd0a-e03e-4239-9267-59e1f47bc6da" />
+# Finverse World Macro Terminal                
 
 
 
@@ -83,3 +83,7 @@ Open `index.html` directly in your browser or run it via a Live Server extension
 
 - **[CHANGELOG.md](./CHANGELOG.md)**: Track version changes and sprint logs.
 - **[SYSTEM_MAP.md](./SYSTEM_MAP.md)**: Details the current architecture, data pipelines, and backlog workflows for future development (Phase 3).
+
+
+
+<img width="480" height="480" alt="Happy Stock Market GIF by shremps" src="https://github.com/user-attachments/assets/52febd0a-e03e-4239-9267-59e1f47bc6da" />
