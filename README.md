@@ -4,6 +4,9 @@
 
 A high-density, cyberpunk-themed macro-economic terminal designed for zero-padding, ultra-compact real-time market intelligence gathering. 
 
+![Uploading Screenshot 2026-07-01 194229.png…]()
+
+
 ## 🚀 Features
 
 * **Cyberpunk Trading Floor UI**: A sleek, dark-themed HTML/JS/Tailwind CSS dashboard with neon accents, custom scrollbars, and dynamic glowing indicators.
