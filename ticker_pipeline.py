@@ -9,9 +9,10 @@ from dotenv import load_dotenv
 load_dotenv()
 try:
     import yfinance as yf
+    import requests
 except ImportError:
-    print("Error: yfinance is not installed.")
-    print("Please install by running: pip install yfinance")
+    print("Error: yfinance or requests is not installed.")
+    print("Please install by running: pip install yfinance requests")
     sys.exit(1)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -46,8 +47,21 @@ ASSETS = [
     {"name": "Bitcoin", "ticker": "BTC-USD"},
     {"name": "EUR/USD", "ticker": "EURUSD=X"},
     {"name": "USD/JPY", "ticker": "USDJPY=X"},
-    {"name": "VIX", "ticker": "^VIX"}
+    {"name": "VIX", "ticker": "^VIX"},
+    {"name": "Nifty Bank", "ticker": "^NSEBANK"},
+    {"name": "Finnifty", "ticker": "NIFTY_FIN_SERVICE.NS"},
+    {"name": "Nifty IT", "ticker": "^CNXIT"},
+    {"name": "Nifty Pharma", "ticker": "^CNXPHARMA"},
+    {"name": "Nifty Auto", "ticker": "^CNXAUTO"},
+    {"name": "Nifty FMCG", "ticker": "^CNXFMCG"},
+    {"name": "Nifty Metal", "ticker": "^CNXMETAL"},
+    {"name": "Nifty Realty", "ticker": "^CNXREALTY"},
+    {"name": "Nifty Media", "ticker": "^CNXMEDIA"}
 ]
+
+# Stateful alert debouncing dictionaries
+last_alert_values = {}
+last_alert_times = {}
 
 def get_db_connection():
     try:
@@ -122,6 +136,30 @@ def fetch_and_update_data():
             
             # Calculate 1D percentage change
             delta_1d = ((current_price - prev_price) / prev_price) * 100
+            
+            # Intel Spam Filtering & Debouncing Check
+            now_ts = time.time()
+            last_delta = last_alert_values.get(ticker, 0.0)
+            last_time = last_alert_times.get(ticker, 0)
+            
+            # Only trigger if delta is significant
+            if abs(delta_1d) >= 1.5:
+                # Trigger if absolute additional 0.5% move OR 10 minutes (600s) have passed
+                if abs(delta_1d - last_delta) >= 0.5 or (now_ts - last_time) >= 600:
+                    last_alert_values[ticker] = delta_1d
+                    last_alert_times[ticker] = now_ts
+                    
+                    tier = "[CRITICAL]" if abs(delta_1d) >= 3.0 else "[SIGNIFICANT]"
+                    direction = "BREAKOUT" if delta_1d > 0 else "PLUNGE"
+                    try:
+                        requests.post("http://127.0.0.1:8000/api/intel/broadcast", json={
+                            "tag": "[VOLATILITY]",
+                            "tier": tier,
+                            "asset": asset_name,
+                            "message": f"Sudden structural {direction} detected. Delta: {delta_1d:+.2f}%"
+                        }, timeout=2)
+                    except Exception as e:
+                        logger.warning(f"Could not broadcast alert for {ticker}: {e}")
             
             records.append((ticker, asset_name, current_price, delta_1d, baseline_1w, baseline_1m))
             logger.info(f"Processed {asset_name} ({ticker}): {current_price:.2f} ({delta_1d:+.2f}%)")

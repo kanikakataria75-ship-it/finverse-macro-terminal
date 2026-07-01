@@ -5,16 +5,17 @@
 **1. Frontend (`index.html`)**
 - Single-page application built with HTML, Vanilla JS, and Tailwind CSS runtime.
 - High-density, zero-padding trading floor aesthetic.
-- Components: Macro Asset Ticker Panel, Geopolitical War Map, Live Video Console, Live Text Intel Feed, Ingestion Stream Status.
+- Components: Macro Asset Ticker Panel, Dynamic SVG Geopolitical Heatmap (D3.js), Live Video Console, Live Text Intel Feed, Ingestion Stream Status.
 
 **2. Backend Engine (`server.py`)**
 - FastAPI server running on Uvicorn.
 - **REST API (`/api/macro-metrics`)**: Serves asset data (price, 1d, 1w, 1m deltas) from PostgreSQL.
 - **WebSocket (`/ws/intel`)**: Publishes multi-stream data from background ingestion tasks.
 
-**3. Data Pipeline (`ticker_pipeline.py`)**
-- Asynchronous polling script that fetches data for 22 global assets using `yfinance`.
-- Stores data and historical baselines into a local PostgreSQL database (`finverse.macro_assets`).
+**3. Data Pipeline (`macro_pipeline.py`)**
+- Unified asynchronous worker replacing previous independent scripts.
+- Consolidates `yfinance` baseline ingestion, Angel One WebSockets, Binance Liquidations, and ACLED Geopolitical map metrics.
+- Stores data and historical baselines into a local PostgreSQL database (`finverse.macro_assets` and `finverse.macro_map_state`).
 
 ## Live Text Intel Feed Data Streams
 
@@ -34,5 +35,5 @@
 | Feature | Priority | Status |
 |---|---|---|
 | Live NSE Option Activity & OI Delta Tracker | High | Deferred to Phase 3 |
-| Expand Geopolitical War Map APIs | Medium | Backlog |
+| Advanced Portfolio Position Manager | Low | Backlog |
 | Advanced Portfolio Position Manager | Low | Backlog |

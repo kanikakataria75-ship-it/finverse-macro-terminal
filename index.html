@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finverse World Macro Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/topojson-client@3"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -82,9 +84,72 @@
         /* Arc Meter */
         #meter-needle { transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: 50% 100%; }
         #meter-fill { transition: stroke-dashoffset 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), stroke 0.8s; }
+        
+        /* Cyberpunk UI Tension Animations */
+        .glitch-flash { animation: glitchFlash 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+        @keyframes glitchFlash {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 1px); border-color: #FF3131; background: rgba(255,49,49,0.3); }
+            40% { transform: translate(-1px, -2px); border-color: #fff; background: rgba(255,255,255,0.8); }
+            60% { transform: translate(2px, 2px); border-color: #FF3131; }
+            80% { transform: translate(1px, -1px); border-color: #000; }
+            100% { transform: translate(0); }
+        }
+        
+        .breathe-neon-red { color: #FF3131 !important; animation: breatheNeonRed 2s infinite alternate; }
+        @keyframes breatheNeonRed {
+            0% { opacity: 0.8; text-shadow: 0 0 4px rgba(255,49,49,0.5); }
+            100% { opacity: 1; text-shadow: 0 0 12px rgba(255,49,49,1); }
+        }
+
+        .macro-amber { color: #FFD700 !important; text-shadow: 0 0 4px rgba(255,215,0,0.4); }
+        
+        
+        .flash-timestamp { animation: flashTimestamp 1s ease-out; }
+        @keyframes flashTimestamp {
+            0% { color: #10b981; text-shadow: 0 0 10px #10b981; }
+            100% { color: #6b7280; text-shadow: none; }
+        }
+        
+        /* Cyberpunk Radar Map Additions */
+        .cyber-wireframe {
+            stroke: #00F0FF;
+            stroke-width: 0.5px;
+            fill: rgba(30, 41, 59, 0.4);
+            transition: fill 0.75s ease;
+        }
+        .radar-sweep-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(to right, transparent, #00F0FF);
+            box-shadow: 0 0 15px 2px #00F0FF;
+            opacity: 0.7;
+            animation: radarSweep 3s linear infinite;
+            pointer-events: none;
+            z-index: 10;
+        }
+        @keyframes radarSweep {
+            0% { transform: translateX(-10px); opacity: 0; }
+            10% { opacity: 0.7; }
+            90% { opacity: 0.7; }
+            100% { transform: translateX(800px); opacity: 0; }
+        }
+
     </style>
 </head>
-<body class="flex flex-col h-screen overflow-y-auto selection:bg-neon selection:text-primary">
+<body class="bg-bg text-fg overflow-hidden h-screen flex flex-col font-sans text-sm selection:bg-accent selection:text-white relative">
+    
+    <!-- Systemic Feed Velocity Global Wrapper -->
+    <div id="systemic-volatility-wrapper" class="hidden fixed inset-0 z-[100] pointer-events-none flex items-center justify-center bg-crimson/10 border-[8px] border-crimson/80 animate-pulse transition-opacity duration-300">
+        <div class="bg-black/90 px-8 py-4 rounded text-crimson font-black text-2xl tracking-[0.2em] shadow-[0_0_30px_rgba(239,68,68,1)] text-center flex flex-col items-center gap-2">
+            <span class="block text-sm text-white bg-crimson/20 px-3 py-1 rounded-full border border-crimson/50">SYSTEMIC VOLATILITY ALERT</span>
+            <span class="blink">HIGH FEED VELOCITY ACTIVE</span>
+            <span id="apm-display" class="text-xs text-white opacity-80 font-mono mt-1">APM: --</span>
+        </div>
+    </div>
 
     <!-- 1. THE INFINITE EXCHANGE TICKER BAR -->
     <div class="h-8 bg-card border-b border-accent flex items-center overflow-hidden shrink-0 w-full relative z-20">
@@ -292,37 +357,32 @@
             
             <!-- Live Interactive World Heatmap -->
             <div class="bg-card border border-accent rounded-lg p-5 flex flex-col flex-1 shadow-lg relative">
-                <h2 class="text-[11px] uppercase tracking-widest text-muted font-bold mb-3 flex items-center gap-2">
-                    <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    Geographic Sentiment Heatmap
-                </h2>
+                <div class="flex items-center justify-between mb-3 border-b border-accent pb-2">
+                    <h2 class="text-[11px] uppercase tracking-widest text-muted font-bold flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Global Macro Geopolitical Radar
+                    </h2>
+                </div>
+                
+                <div class="flex items-center justify-center gap-6 mb-2 px-1">
+                    <label class="flex items-center gap-1.5 cursor-pointer text-[10px] text-muted hover:text-crimson font-mono transition-colors">
+                        <input type="radio" name="radar-mode" value="war" class="accent-crimson radar-toggle" checked>
+                        [WAR ZONES]
+                    </label>
+                    <label class="flex items-center gap-1.5 cursor-pointer text-[10px] text-muted hover:text-neon font-mono transition-colors">
+                        <input type="radio" name="radar-mode" value="oil" class="accent-neon radar-toggle">
+                        [OIL RESERVES]
+                    </label>
+                    <label class="flex items-center gap-1.5 cursor-pointer text-[10px] text-muted hover:text-[#FFD700] font-mono transition-colors">
+                        <input type="radio" name="radar-mode" value="gold" class="accent-[#FFD700] radar-toggle">
+                        [GOLD RESERVES]
+                    </label>
+                </div>
                 
                 <div class="flex-1 bg-[#0d131f] border border-accent rounded flex items-center justify-center relative overflow-hidden group">
                     <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IiMxZjI5MzciLz48L3N2Zz4=')] opacity-30 mix-blend-screen pointer-events-none"></div>
-                    
-                    <svg viewBox="0 0 1000 500" class="w-full h-full p-4 drop-shadow-2xl">
-                        <!-- Grid Lines -->
-                        <path d="M0 250 L1000 250 M500 0 L500 500" stroke="#1f2937" stroke-width="1" stroke-dasharray="5,5" opacity="0.5"/>
-                        
-                        <!-- Abstract USA -->
-                        <g id="map-usa" class="map-region cursor-pointer transition-all duration-500">
-                            <path d="M 180 160 L 320 140 L 360 200 L 340 250 L 290 280 L 210 240 L 160 190 Z" fill="rgba(16, 185, 129, 0.15)" stroke="#10b981" stroke-width="1.5" stroke-linejoin="round" class="hover:fill-neon/30 hover:stroke-[2.5px] transition-all"/>
-                            <circle cx="260" cy="200" r="3" fill="#10b981" class="blink"/>
-                            <text x="260" y="225" fill="#10b981" font-size="14" font-family="'JetBrains Mono', monospace" text-anchor="middle" font-weight="bold" letter-spacing="1">USA</text>
-                        </g>
-
-                        <!-- Abstract Europe -->
-                        <g id="map-eu" class="map-region cursor-pointer transition-all duration-500">
-                            <path d="M 480 140 L 550 120 L 590 160 L 560 210 L 500 190 Z" fill="rgba(59, 130, 246, 0.15)" stroke="#3b82f6" stroke-width="1.5" stroke-linejoin="round" class="hover:fill-blue-500/30 hover:stroke-[2.5px] transition-all"/>
-                            <text x="540" y="175" fill="#3b82f6" font-size="14" font-family="'JetBrains Mono', monospace" text-anchor="middle" font-weight="bold" letter-spacing="1">EU</text>
-                        </g>
-
-                        <!-- Abstract China -->
-                        <g id="map-china" class="map-region cursor-pointer transition-all duration-500">
-                            <path d="M 680 150 L 800 140 L 840 220 L 750 280 L 660 220 Z" fill="rgba(239, 68, 68, 0.15)" stroke="#ef4444" stroke-width="1.5" stroke-linejoin="round" class="hover:fill-crimson/30 hover:stroke-[2.5px] transition-all"/>
-                            <circle cx="750" cy="200" r="3" fill="#ef4444" class="blink"/>
-                            <text x="750" y="230" fill="#ef4444" font-size="14" font-family="'JetBrains Mono', monospace" text-anchor="middle" font-weight="bold" letter-spacing="1">CHN</text>
-                        </g>
+                    <svg id="geopolitical-radar" viewBox="0 0 1000 500" class="w-full h-full drop-shadow-2xl cursor-move">
+                        <!-- Map rendered by D3 -->
                     </svg>
                 </div>
             </div>
@@ -409,7 +469,8 @@
                     <svg class="w-3.5 h-3.5 text-hc" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
                     Live Text Intel Feed
                 </h2>
-                <div class="flex-1 overflow-y-auto custom-scrollbar pr-1 font-mono text-[10px] flex flex-col gap-3" id="live-feed-log">
+                <div class="flex-1 overflow-y-auto custom-scrollbar pr-1 font-mono text-[10px] leading-tight flex flex-col gap-2.5 relative" id="live-feed-log" style="font-family: 'JetBrains Mono', 'Courier New', monospace;">
+                    <div id="pinned-alerts" class="w-full flex flex-col gap-2.5 sticky top-0 z-20"></div>
                     <!-- Logs populated by JS -->
                 </div>
             </div>
@@ -653,55 +714,185 @@
 
             // 5. Live Text Feed Streaming (WebSocket)
             const logContainer = document.getElementById('live-feed-log');
+            const pinnedContainer = document.getElementById('pinned-alerts');
+            const systemicWrapper = document.getElementById('systemic-volatility-wrapper');
+            const apmDisplay = document.getElementById('apm-display');
+            
+            // Speedometer tracking
+            let alertTimestamps = [];
+
+            function updateFeedVelocity() {
+                const now = Date.now();
+                alertTimestamps = alertTimestamps.filter(ts => now - ts <= 60000);
+                const apm = alertTimestamps.length;
+                
+                if (apmDisplay) apmDisplay.innerText = `APM: ${apm}`;
+                
+                if (apm > 15) {
+                    systemicWrapper.classList.remove('hidden');
+                } else {
+                    systemicWrapper.classList.add('hidden');
+                }
+            }
+
+            setInterval(updateFeedVelocity, 1000);
             
             function appendLogPacket(packet) {
-                // Color rules:
-                // System/Macro: Cyan/Blue
-                // Volatility/Liquidation: Red/Orange
-                // Institutional/Domestic: Emerald/Neon Green
+                alertTimestamps.push(Date.now());
+                updateFeedVelocity();
+                
+                const isEarningsShock = packet.tag === "[EARNINGS SHOCK]";
+                const isCritical = packet.tier === "[CRITICAL]" || packet.tier === "[SYSTEMIC WHALE]" || packet.tag.includes("CRITICAL") || packet.tag === "[SYSTEMIC]" || isEarningsShock;
+                const isMacro = packet.tag === "[MACRO]" || packet.tag === "[MACRO ROTATION]";
                 
                 let themeColorClass = "text-blue-400";
-                if (packet.tag === "[SYSTEM]" || packet.tag === "[MACRO]" || packet.tag === "[DIVERGENCE]") {
+                let textClass = "";
+                
+                if (isMacro) {
+                    themeColorClass = "macro-amber";
+                    textClass = "macro-amber";
+                } else if (packet.tag === "[SYSTEM]" || packet.tag === "[DIVERGENCE]" || packet.tag === "[CORPORATE ACTION]") {
                     themeColorClass = "text-blue-400";
                 } else if (packet.tag === "[VOLATILITY]" || packet.tag === "[LIQUIDATION]") {
                     themeColorClass = "text-crimson";
-                } else if (packet.tag === "[INSTITUTIONAL]") {
+                } else if (packet.tag === "[INSTITUTIONAL]" || packet.tag === "[INSTITUTIONAL BLOCK]" || packet.tag === "[ORDER BOOK IMBALANCE]") {
                     themeColorClass = "text-neon";
+                }
+                
+                if (isCritical) {
+                    themeColorClass = "text-[#FF3131]";
+                    textClass = "breathe-neon-red";
                 }
                 
                 let tierHtml = '';
                 if (packet.tier) {
-                    tierHtml = `<span class="bg-accent text-hc px-1 rounded mx-1">${packet.tier}</span>`;
+                    tierHtml = `${packet.tier}`;
                 }
 
                 let assetHtml = '';
                 if (packet.asset) {
-                    assetHtml = `<span class="${themeColorClass} font-bold mx-1">${packet.asset}:</span>`;
+                    assetHtml = ` ${packet.asset}:`;
                 }
                 
-                const logHTML = `<span class="text-muted mr-2">[${packet.timestamp}]</span> <span class="${themeColorClass} font-bold">${packet.tag}</span>${tierHtml}${assetHtml} <span class="text-hc opacity-90">${packet.message}</span>`;
+                // Institutional Wire Format
+                const logHTML = `<span class="text-muted mr-1 flash-timestamp">[${packet.timestamp}]</span><span class="${themeColorClass} font-bold">${packet.tag}${tierHtml}${assetHtml}</span> <span class="text-hc opacity-90 ${textClass}">${packet.message}</span>`;
                 
                 const logEl = document.createElement('div');
-                logEl.className = `border-l-2 border-accent pl-2 py-0.5 animate-pulse bg-card/40`;
-                if (themeColorClass === "text-crimson") {
-                    logEl.classList.add('border-crimson', 'bg-crimson/10');
-                } else if (themeColorClass === "text-neon") {
-                    logEl.classList.add('border-neon', 'bg-neon/10');
+                
+                if (isCritical) {
+                    logEl.className = `border-2 border-[#FF3131] pl-2 py-1 bg-[#FF3131]/20 shadow-[0_0_15px_rgba(255,49,49,0.4)] rounded glitch-flash leading-tight`;
+                    logEl.innerHTML = logHTML;
+                    pinnedContainer.appendChild(logEl);
+                    
+                    // Unpin after 10 minutes (600,000 ms)
+                    setTimeout(() => {
+                        if (pinnedContainer.contains(logEl)) {
+                            pinnedContainer.removeChild(logEl);
+                            logEl.className = `border-l-2 border-[#FF3131] pl-2 py-0.5 bg-[#FF3131]/10 leading-tight`;
+                            logContainer.insertBefore(logEl, pinnedContainer.nextSibling);
+                        }
+                    }, 600000);
+                } else {
+                    logEl.className = `border-l-2 border-accent pl-2 py-0.5 animate-pulse bg-card/40 leading-tight`;
+                    if (isMacro) {
+                        logEl.classList.add('border-[#FFD700]', 'bg-[#FFD700]/10');
+                    } else if (themeColorClass === "text-crimson") {
+                        logEl.classList.add('border-crimson', 'bg-crimson/10');
+                    } else if (themeColorClass === "text-neon") {
+                        logEl.classList.add('border-neon', 'bg-neon/10');
+                    }
+                    logEl.innerHTML = logHTML;
+                    logContainer.appendChild(logEl);
+                    setTimeout(() => logEl.classList.remove('animate-pulse'), 1000);
                 }
                 
-                logEl.innerHTML = logHTML;
-                logContainer.appendChild(logEl);
-                
-                setTimeout(() => logEl.classList.remove('animate-pulse'), 1000);
-                
-                if(logContainer.children.length > 50) {
-                    logContainer.removeChild(logContainer.firstChild);
+                // Cleanup normal logs to prevent infinite DOM growth (keep ~50 standard logs)
+                if(logContainer.childElementCount > 51) {
+                    if (logContainer.children[1]) {
+                        logContainer.removeChild(logContainer.children[1]);
+                    }
                 }
                 
                 logContainer.scrollTop = logContainer.scrollHeight;
             }
             
+            
+            async function fetchMacroMetrics() {
+                try {
+                    const resp = await fetch('http://localhost:8000/api/macro-metrics');
+                    if(resp.ok) {
+                        const data = await resp.json();
+                        data.forEach(asset => {
+                            let elId = '';
+                            if(asset.ticker === 'GC=F') elId = 'asset-gc';
+                            else if(asset.ticker === 'SI=F') elId = 'asset-si';
+                            else if(asset.ticker === '^TNX') elId = 'asset-us10y-grid';
+                            else if(asset.ticker === 'BTC-USD') elId = 'asset-btc';
+                            else if(asset.ticker === 'EURUSD=X') elId = 'asset-eurusd';
+                            else if(asset.ticker === 'USDJPY=X') elId = 'asset-usdjpy';
+                            else if(asset.ticker === 'INR=X') elId = 'asset-usdinr';
+                            else if(asset.ticker === 'DX-Y.NYB') elId = 'asset-dxy';
+                            else if(asset.ticker === '^VIX') elId = 'asset-vix';
+                            
+                            if(elId) {
+                                const card = document.getElementById(elId);
+                                if(card) {
+                                    const valSpan = card.querySelector('span.text-xl');
+                                    const deltaSpan = card.querySelector('span.shift-val');
+                                    if(valSpan && deltaSpan) {
+                                        valSpan.innerText = parseFloat(asset.current_price).toFixed(2);
+                                        const delta = parseFloat(asset.delta_1d);
+                                        deltaSpan.innerText = (delta > 0 ? '+' : '') + delta.toFixed(2) + '%';
+                                        
+                                        if(delta > 0) {
+                                            deltaSpan.className = "text-[10px] shift-val px-1.5 rounded transition-colors bg-neon/20 text-neon";
+                                        } else if(delta < 0) {
+                                            deltaSpan.className = "text-[10px] shift-val px-1.5 rounded transition-colors bg-crimson/20 text-crimson";
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Map for top marquee bar
+                            const tickerMap = {
+                                'BZ=F': 'brent',
+                                'CL=F': 'wti',
+                                'NG=F': 'natgas',
+                                'DX-Y.NYB': 'dxy',
+                                '^IXIC': 'nasdaq',
+                                '^NSEI': 'nifty',
+                                '^TNX': 'us10y',
+                                '^N225': 'nikkei',
+                                '^FTSE': 'ftse',
+                                '^HSI': 'hsi',
+                                '^TWII': 'taiwan',
+                                '^KS11': 'kospi',
+                                'NVDA': 'nvda',
+                                'AAPL': 'aapl',
+                                'GOOGL': 'googl'
+                            };
+                            
+                            const marqueeAttr = tickerMap[asset.ticker];
+                            if(marqueeAttr) {
+                                document.querySelectorAll(`.asset-clk[data-asset="${marqueeAttr}"]`).forEach(el => {
+                                    const delta = parseFloat(asset.delta_1d);
+                                    const sign = delta > 0 ? '▲' : '▼';
+                                    const colorClass = delta > 0 ? 'text-neon' : 'text-crimson';
+                                    el.className = `${colorClass} cursor-pointer hover:opacity-80 transition-opacity asset-clk`;
+                                    el.innerText = `${sign} ${asset.asset_name.toUpperCase()} ${parseFloat(asset.current_price).toFixed(2)} (${delta > 0 ? '+' : ''}${delta.toFixed(2)}%)`;
+                                });
+                            }
+                        });
+                    }
+                } catch(e) {
+                    console.error("Failed to fetch macro metrics:", e);
+                }
+            }
+            setInterval(fetchMacroMetrics, 5000);
+            fetchMacroMetrics();
+            
             function addLog(textOverride, isCrimson = false) {
+
                 // Keep backward compatibility for showConnectionError()
                 const now = new Date();
                 const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
@@ -743,172 +934,191 @@
             // Give the UI a moment to load, then connect
             setTimeout(initIntelWebSocket, 1000);
 
-            // 6. Asynchronous API Polling Bridge (Phase 2)
-            async function fetchMacroMetrics() {
-                try {
-                    const response = await fetch('http://127.0.0.1:8000/api/macro-metrics');
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    const data = await response.json();
+            // --- GLOBAL MACRO GEOPOLITICAL RADAR (D3 Engine) ---
+            class GeopoliticsRadar {
+                constructor() {
+                    this.svg = d3.select("#geopolitical-radar");
+                    this.mapGroup = this.svg.append("g");
+                    this.projection = d3.geoMercator().scale(150).translate([500, 320]);
+                    this.path = d3.geoPath().projection(this.projection);
+                    this.currentMode = 'war';
+                    this.mapState = [];
                     
-                    updateMacroUI(data);
-                    clearConnectionError();
-                } catch (error) {
-                    console.error('API Bridge Error:', error);
-                    showConnectionError();
-                }
-            }
-
-            function updateMacroUI(data) {
-                const metricsMap = {};
-                data.forEach(asset => {
-                    metricsMap[asset.ticker] = asset;
-                });
-
-                const assetToTicker = {
-                    'brent': 'BZ=F', 'wti': 'CL=F', 'natgas': 'NG=F',
-                    'dxy': 'DX-Y.NYB', 'nasdaq': '^IXIC', 'nifty': '^NSEI', 'us10y': '^TNX',
-                    'nikkei': '^N225', 'ftse': '^FTSE', 'hsi': '^HSI', 'taiwan': '^TWII', 'kospi': '^KS11',
-                    'nvda': 'NVDA', 'aapl': 'AAPL', 'googl': 'GOOGL'
-                };
-
-                // Update Ticker Bar
-                document.querySelectorAll('.ticker .asset-clk').forEach(el => {
-                    const assetKey = el.getAttribute('data-asset');
-                    const tickerId = assetToTicker[assetKey];
-                    if (tickerId && metricsMap[tickerId]) {
-                        const asset = metricsMap[tickerId];
-                        const isPositive = asset.delta_1d >= 0;
-                        const prefix = isPositive ? '▲' : '▼';
-                        const sign = isPositive ? '+' : '';
-                        const colorClass = isPositive ? 'text-neon' : 'text-crimson';
-                        
-                        let priceFormatted = asset.current_price;
-                        if(assetKey === 'brent') priceFormatted = '$' + asset.current_price.toFixed(2);
-                        else if (assetKey === 'us10y') priceFormatted = asset.current_price.toFixed(2) + '%';
-                        else if (assetKey === 'nasdaq' || assetKey === 'nifty') priceFormatted = asset.current_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                        else priceFormatted = asset.current_price.toFixed(2);
-                        
-                        el.innerHTML = `${prefix} ${asset.asset_name.toUpperCase()} ${priceFormatted} (${sign}${asset.delta_1d.toFixed(2)}%)`;
-                        el.className = `${colorClass} cursor-pointer hover:opacity-80 transition-opacity asset-clk`;
-                    }
-                });
-
-                // Update Quadrant
-                const quadrantUpdates = [
-                    { id: 'asset-gc', ticker: 'GC=F' },
-                    { id: 'asset-si', ticker: 'SI=F' },
-                    { id: 'asset-us10y-grid', ticker: '^TNX' },
-                    { id: 'asset-btc', ticker: 'BTC-USD' },
-                    { id: 'asset-eurusd', ticker: 'EURUSD=X' },
-                    { id: 'asset-usdjpy', ticker: 'USDJPY=X' },
-                    { id: 'asset-usdinr', ticker: 'INR=X' },
-                    { id: 'asset-dxy', ticker: 'DX-Y.NYB' },
-                    { id: 'asset-vix', ticker: '^VIX' }
-                ];
-
-                quadrantUpdates.forEach(update => {
-                    if (metricsMap[update.ticker]) {
-                        const asset = metricsMap[update.ticker];
-                        const card = document.getElementById(update.id);
-                        if (card) {
-                            const isPositive = asset.delta_1d >= 0;
-                            const sign = isPositive ? '+' : '';
-                            
-                            const priceEl = card.querySelector('.tracking-tight');
-                            if (priceEl) {
-                                priceEl.textContent = update.ticker === '^TNX' ? asset.current_price.toFixed(2) + '%' : asset.current_price.toFixed(2);
-                            }
-                            
-                            const deltaEl = card.querySelector('.shift-val');
-                            if (deltaEl) {
-                                deltaEl.textContent = `${sign}${asset.delta_1d.toFixed(2)}%`;
-                                deltaEl.className = `text-[10px] shift-val px-1.5 rounded transition-colors ${isPositive ? 'text-neon bg-neon/10' : 'text-crimson bg-crimson/10'}`;
-                            }
-                            
-                            // Visual Tension Alerts (>1.5% change)
-                            card.classList.remove('marketPulseRed', 'marketPulseGreen');
-                            if (asset.delta_1d <= -1.5) {
-                                card.classList.add('marketPulseRed');
-                            } else if (asset.delta_1d >= 1.5) {
-                                card.classList.add('marketPulseGreen');
-                            }
-                        }
-                    }
-                });
-            }
-
-            let errorAlertDisplayed = false;
-            function showConnectionError() {
-                if(!errorAlertDisplayed) {
-                    const statusContainers = document.querySelectorAll('.bg-\\[\\#090d16\\]');
-                    const targetContainer = statusContainers[statusContainers.length - 1];
-                    if(targetContainer) {
-                        const streamsList = targetContainer.querySelector('.flex-col');
-                        if(streamsList) {
-                            const errorDiv = document.createElement('div');
-                            errorDiv.id = 'api-conn-error';
-                            errorDiv.className = 'flex items-center justify-between bg-crimson/10 px-2 py-1.5 rounded border border-crimson/50 mt-2';
-                            errorDiv.innerHTML = '<span class="text-crimson font-bold text-[9px]">API BRIDGE OFFLINE</span><span class="w-1.5 h-1.5 rounded-full bg-crimson blink"></span>';
-                            streamsList.appendChild(errorDiv);
-                            errorAlertDisplayed = true;
-                            
-                            addLog('SYSTEM ALARM: Local PostgreSQL API Bridge connection failed. Falling back to cached prototype data.', true);
-                        }
-                    }
-                }
-            }
-            
-            function clearConnectionError() {
-                if(errorAlertDisplayed) {
-                    const errorDiv = document.getElementById('api-conn-error');
-                    if(errorDiv) errorDiv.remove();
-                    errorAlertDisplayed = false;
-                }
-            }
-
-            // Start polling engine
-            fetchMacroMetrics();
-            setInterval(fetchMacroMetrics, 5000);
-
-        
-            // Live Video Console Logic
-            const videoFrame = document.getElementById('news-player');
-            const channelBtns = document.querySelectorAll('.channel-btn');
-            
-            const LIVE_STREAMS = {
-                bloomberg: 'live_stream?channel=UCNye-wNBqNL5ZzHSJj3l8Bg',
-                ndtv_profit: 'EN-N1xhtBqU',
-                firstpost: 'GgnIf1TPHsA',
-                nbc_us: '7cxCCru7QLI',
-                cna_asia: 'XWq5kBlakcQ',
-                dw_europe: 'LuKwFajn37U',
-                war_feed: 'gCNeDWCI0vo'
-            };
-
-            channelBtns.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const selectedChannel = e.currentTarget.getAttribute('data-channel');
-                    if(selectedChannel && LIVE_STREAMS[selectedChannel]) {
-                        let streamPath = LIVE_STREAMS[selectedChannel];
-                        let separator = streamPath.includes('?') ? '&' : '?';
-                        videoFrame.src = `https://www.youtube.com/embed/${streamPath}${separator}autoplay=1&mute=1`;
-                        
-                        channelBtns.forEach(b => {
-                            if(!b.classList.contains('text-crimson')) {
-                                b.classList.remove('bg-accent', 'text-hc');
-                                b.classList.add('bg-primary/50', 'text-muted');
-                            }
+                    const zoom = d3.zoom()
+                        .scaleExtent([1, 8])
+                        .on("zoom", (event) => {
+                            this.mapGroup.attr("transform", event.transform);
                         });
-                        
-                        if(!e.currentTarget.classList.contains('text-crimson')) {
-                            e.currentTarget.classList.remove('bg-primary/50', 'text-muted');
-                            e.currentTarget.classList.add('bg-accent', 'text-hc');
-                        }
+                    this.svg.call(zoom);
+
+                    this.init();
+                }
+
+                async init() {
+                    try {
+                        let worldData = await d3.json("https://unpkg.com/world-atlas@2.0.2/countries-110m.json");
+                        this.topology = topojson.feature(worldData, worldData.objects.countries).features;
+                    } catch(e) {
+                        console.error("Failed to load map topology:", e);
+                        this.svg.html(`<rect width="1000" height="500" fill="#0d131f" opacity="1"/><text x="500" y="250" fill="#ef4444" text-anchor="middle" font-family="monospace">SYSTEM ERROR: OFFLINE SVG MATRIX LOADED</text>`);
+                        return;
                     }
+                    this.renderBaseMap();
+                    
+                    // Initial fetch
+                    await this.fetchMapState();
+                    
+                    // Poll map state every 10 seconds
+                    setInterval(() => this.fetchMapState(), 10000);
+                }
+
+                async fetchMapState() {
+                    try {
+                        let stateResp = await fetch("http://localhost:8000/api/macro/map-state");
+                        if(stateResp.ok) {
+                            let stateData = await stateResp.json();
+                            this.mapState = stateData.macro_map_state || [];
+                        } else {
+                            this.mapState = [];
+                        }
+                    } catch(e) {
+                        console.error("Failed to load map state from API:", e);
+                        this.mapState = [];
+                    }
+                    this.updateHeatmap();
+                }
+
+                getIso3(id) {
+                    // Extended proxy map for standard D3 IDs to ISO-3.
+                    const d3ToIso = {
+                        "840": "USA", "156": "CHN", "643": "RUS", "356": "IND", "826": "GBR", "250": "FRA",
+                        "276": "DEU", "380": "ITA", "392": "JPN", "124": "CAN", "76": "BRA", "36": "AUS",
+                        "804": "UKR", "376": "ISR", "275": "PSE", "364": "IRN", "682": "SAU", "862": "VEN",
+                        // ACLED High-Intensity Conflict Zones
+                        "760": "SYR", "887": "YEM", "729": "SDN", "104": "MMR", "004": "AFG", 
+                        "706": "SOM", "368": "IRQ", "180": "COD", "466": "MLI", "422": "LBN"
+                    };
+                    return d3ToIso[id] || "UNK";
+                }
+
+                renderBaseMap() {
+                    const radar = this;
+                    this.mapGroup.selectAll("path")
+                        .data(this.topology)
+                        .enter().append("path")
+                        .attr("d", this.path)
+                        .attr("class", "cyber-wireframe cursor-crosshair")
+                        .attr("id", d => `iso-${this.getIso3(d.id)}`)
+                        .on("mouseover", function(e, d) {
+                            d3.select(this).attr("stroke", "#fff").attr("stroke-width", "1.5px");
+                        })
+                        .on("mouseout", function(e, d) {
+                            d3.select(this).attr("stroke", "#00F0FF").attr("stroke-width", "0.5px");
+                        })
+                        .on("click", function(e, d) {
+                            radar.openCountryDrawer(radar.getIso3(d.id));
+                        });
+                }
+
+                updateHeatmap() {
+                    let maxVal = 0.0001;
+                    let metric = "";
+                    let colorScale;
+                    let radar = this;
+
+                    if(this.currentMode === 'war') {
+                        metric = "war_intensity_score";
+                        maxVal = d3.max(this.mapState, d => parseFloat(d[metric])) || 100;
+                        colorScale = d3.scaleLinear().domain([0, maxVal]).range(["rgba(30, 41, 59, 0.4)", "#FF3131"]);
+                    } else if(this.currentMode === 'oil') {
+                        metric = "oil_reserves_barrels";
+                        maxVal = d3.max(this.mapState, d => parseFloat(d[metric])) || 300;
+                        colorScale = d3.scaleLinear().domain([0, maxVal]).range(["rgba(30, 41, 59, 0.4)", "#39FF14"]);
+                    } else if(this.currentMode === 'gold') {
+                        metric = "gold_reserves_tonnes";
+                        maxVal = d3.max(this.mapState, d => parseFloat(d[metric])) || 8000;
+                        colorScale = d3.scaleLinear().domain([0, maxVal]).range(["rgba(30, 41, 59, 0.4)", "#FFD700"]);
+                    }
+                    
+                    console.log(`[DEBUG] updateHeatmap mode=${this.currentMode} metric=${metric} maxVal=${maxVal}`);
+                    console.log(`[DEBUG] mapState length = ${this.mapState.length}`);
+                    console.log(`[DEBUG] Paths count = ${this.mapGroup.selectAll("path").size()}`);
+
+                    this.mapGroup.selectAll("path")
+                        .transition().duration(750)
+                        .style("fill", function(d) {
+                            const iso = radar.getIso3(d.id);
+                            const state = radar.mapState.find(s => s.country_iso === iso);
+                            if(!state || typeof state[metric] === 'undefined' || state[metric] === null) {
+                                d3.select(this).classed("breathe-neon-red", false);
+                                return "rgba(30, 41, 59, 0.4)";
+                            }
+                            
+                            // Pulse animation for high war zones
+                            if(radar.currentMode === 'war' && state[metric] > 70) {
+                                d3.select(this).classed("breathe-neon-red", true);
+                            } else {
+                                d3.select(this).classed("breathe-neon-red", false);
+                            }
+                            
+                            return colorScale(state[metric]);
+                        });
+                }
+
+                async openCountryDrawer(iso) {
+                    const drawer = document.getElementById('country-drawer');
+                    const content = document.getElementById('drawer-content');
+                    const title = document.getElementById('drawer-country-name');
+                    
+                    drawer.style.right = '0px';
+                    content.innerHTML = '<div class="text-center text-[#00F0FF] mt-10 animate-pulse">DECRYPTING ARCHIVES...</div>';
+                    
+                    try {
+                        const resp = await fetch(`http://localhost:8000/api/macro/country/${iso}`);
+                        if(!resp.ok) throw new Error("No Data");
+                        const data = await resp.json();
+                        
+                        title.innerText = data.current_state.country_name || iso;
+                        
+                        let html = `
+                            <div class="grid grid-cols-2 gap-2 mb-4">
+                                <div class="bg-card/50 p-2 border border-accent rounded">
+                                    <div class="text-[9px] text-muted uppercase">War Score</div>
+                                    <div class="text-[#FF3131] font-mono text-lg">${data.current_state.war_intensity_score}</div>
+                                </div>
+                                <div class="bg-card/50 p-2 border border-accent rounded">
+                                    <div class="text-[9px] text-muted uppercase">Oil (B Barrels)</div>
+                                    <div class="text-[#39FF14] font-mono text-lg">${data.current_state.oil_reserves_barrels}</div>
+                                </div>
+                                <div class="bg-card/50 p-2 border border-accent rounded">
+                                    <div class="text-[9px] text-muted uppercase">Gold (Tonnes)</div>
+                                    <div class="text-[#FFD700] font-mono text-lg">${data.current_state.gold_reserves_tonnes}</div>
+                                </div>
+                                <div class="bg-card/50 p-2 border border-accent rounded">
+                                    <div class="text-[9px] text-muted uppercase">Macro Risk</div>
+                                    <div class="text-white font-mono text-lg">${data.current_state.composite_risk_score}</div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-muted font-mono italic">Historical data array plotted internally...</div>
+                        `;
+                        content.innerHTML = html;
+                    } catch(e) {
+                        title.innerText = iso;
+                        content.innerHTML = '<div class="text-crimson font-mono mt-10 text-center">NO INTELLIGENCE FOUND FOR THIS SECTOR.</div>';
+                    }
+                }
+            }
+
+            const radar = new GeopoliticsRadar();
+            
+            document.querySelectorAll('.radar-toggle').forEach(el => {
+                el.addEventListener('change', (e) => {
+                    radar.currentMode = e.target.value;
+                    radar.updateHeatmap();
                 });
             });
 
-            // World Clocks & Market Status
+// World Clocks & Market Status
             function updateClocks() {
                 const now = new Date();
                 
@@ -961,5 +1171,17 @@
 
         });
     </script>
+
+    <!-- Glassmorphic Country Analytics Drawer -->
+    <div id="country-drawer" class="fixed right-[-450px] top-[10%] bottom-[10%] w-[400px] bg-black/40 backdrop-blur-xl border-l border-t border-b border-[#00F0FF]/30 shadow-[-10px_0_30px_rgba(0,240,255,0.1)] z-50 transition-all duration-500 ease-out flex flex-col overflow-hidden rounded-l-xl">
+        <div class="p-4 border-b border-[#00F0FF]/30 flex justify-between items-center bg-[#00F0FF]/5">
+            <h3 id="drawer-country-name" class="text-xl font-black tracking-widest text-[#00F0FF] uppercase">SELECT REGION</h3>
+            <button onclick="document.getElementById('country-drawer').style.right='-450px'" class="text-muted hover:text-crimson font-bold text-lg">&times;</button>
+        </div>
+        <div id="drawer-content" class="p-5 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4">
+            <div class="text-center text-muted font-mono text-xs mt-10">Awaiting Regional Override...</div>
+        </div>
+    </div>
+
 </body>
 </html>

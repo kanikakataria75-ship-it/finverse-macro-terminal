@@ -1,18 +1,8 @@
-
-# Finverse World Macro Terminal                
-
-
+# Finverse World Macro Terminal
 
 ![Finverse Macro Terminal](https://img.shields.io/badge/Status-Phase%202%20Complete-neon) ![FastAPI](https://img.shields.io/badge/Backend-FastAPI-blue) ![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-blue)
 
 A high-density, cyberpunk-themed macro-economic terminal designed for zero-padding, ultra-compact real-time market intelligence gathering. 
-
-
-
-<img width="3439" height="113" alt="Screenshot 2026-06-30 203259" src="https://github.com/user-attachments/assets/d9cd5b8b-9db2-4e95-9923-553968d2cdce" />
-<img width="3435" height="1239" alt="Screenshot 2026-06-30 203243" src="https://github.com/user-attachments/assets/a749403c-fbbd-48e5-b764-3eca7a955bf5" />
-
-
 
 ## 🚀 Features
 
@@ -68,7 +58,7 @@ The application requires running two separate Python scripts and opening the UI 
 
 **Terminal Window 1 - Data Ingestion:**
 ```bash
-python ticker_pipeline.py
+python macro_pipeline.py
 ```
 
 **Terminal Window 2 - Backend & WebSockets:**
@@ -83,7 +73,3 @@ Open `index.html` directly in your browser or run it via a Live Server extension
 
 - **[CHANGELOG.md](./CHANGELOG.md)**: Track version changes and sprint logs.
 - **[SYSTEM_MAP.md](./SYSTEM_MAP.md)**: Details the current architecture, data pipelines, and backlog workflows for future development (Phase 3).
-
-
-
-<img width="480" height="480" alt="Happy Stock Market GIF by shremps" src="https://github.com/user-attachments/assets/52febd0a-e03e-4239-9267-59e1f47bc6da" />
