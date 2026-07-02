@@ -12,10 +12,9 @@
 - **REST API (`/api/macro-metrics`)**: Serves asset data (price, 1d, 1w, 1m deltas) from PostgreSQL.
 - **WebSocket (`/ws/intel`)**: Publishes multi-stream data from background ingestion tasks.
 
-**3. Data Pipeline (`macro_pipeline.py`)**
-- Unified asynchronous worker replacing previous independent scripts.
-- Consolidates `yfinance` baseline ingestion, Angel One WebSockets, Binance Liquidations, and ACLED Geopolitical map metrics.
-- Stores data and historical baselines into a local PostgreSQL database (`finverse.macro_assets` and `finverse.macro_map_state`).
+**3. Data Pipeline & Scraper (`macro_pipeline.py` & `truth_scraper.py`)**
+- `macro_pipeline.py`: Unified asynchronous worker replacing previous independent scripts. Consolidates `yfinance` baseline ingestion, Angel One WebSockets, Binance Liquidations, and ACLED Geopolitical map metrics. Stores data and historical baselines into a local PostgreSQL database (`finverse.macro_assets` and `finverse.macro_map_state`).
+- `truth_scraper.py`: Dedicated parser targeting Donald Trump's public HTML timeline at `trumpstruth.org`. Operates as an autonomous daemon checking for updates every 60 seconds. Caches the latest post state and force pushes it to FastAPI `/api/macro/ingest` to sustain visual telemetry when there are no new posts.
 
 ## Live Text Intel Feed Data Streams
 
@@ -25,6 +24,7 @@
 - **[LIQUIDATION]**: Connects directly to Binance `!forceOrder@arr` websocket. Filters block trades > $5M.
 - **[DIVERGENCE]**: Rolling hourly check on inter-market macro divergences (DXY vs GOLD, etc.).
 - **[INSTITUTIONAL]**: SmartAPI Level 2 Depth anomalies for mega-cap NSE stocks.
+- **[TRUTH_SOCIAL]**: Real-time parsed posts from Donald Trump, graded by the sentiment classifier, feeding the **TRUMP METER** and live logs.
 
 ## 3-Tier Whale Categorization Algorithm
 - **Tier 1 [SIGNIFICANT]**: Normal institutional rebalancing.
@@ -36,4 +36,4 @@
 |---|---|---|
 | Live NSE Option Activity & OI Delta Tracker | High | Deferred to Phase 3 |
 | Advanced Portfolio Position Manager | Low | Backlog |
-| Advanced Portfolio Position Manager | Low | Backlog |
+

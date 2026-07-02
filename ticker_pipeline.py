@@ -123,12 +123,17 @@ def fetch_and_update_data():
             stock = yf.Ticker(ticker)
             # Fetch 1 month to ensure we have enough trading days for historical baselines
             hist = stock.history(period="1mo")
+            hist_live = stock.history(period="1d", interval="1m")
             
             if len(hist) < 2:
                 logger.warning(f"Not enough historical data for {ticker} to calculate delta.")
                 continue
                 
-            current_price = float(hist['Close'].iloc[-1])
+            if not hist_live.empty:
+                current_price = float(hist_live['Close'].iloc[-1])
+            else:
+                current_price = float(hist['Close'].iloc[-1])
+                
             prev_price = float(hist['Close'].iloc[-2])
             
             baseline_1w = float(hist['Close'].iloc[-6]) if len(hist) >= 6 else prev_price

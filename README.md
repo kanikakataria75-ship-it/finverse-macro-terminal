@@ -1,6 +1,6 @@
 # Finverse World Macro Terminal
 
-![Finverse Macro Terminal](https://img.shields.io/badge/Status-Phase%202%20Complete-neon) ![FastAPI](https://img.shields.io/badge/Backend-FastAPI-blue) ![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-blue)
+![Finverse Macro Terminal](https://img.shields.io/badge/Status-Phase%203%20Operational-neon) ![FastAPI](https://img.shields.io/badge/Backend-FastAPI-blue) ![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-blue)
 
 A high-density, cyberpunk-themed macro-economic terminal designed for zero-padding, ultra-compact real-time market intelligence gathering. 
 
@@ -11,13 +11,16 @@ A high-density, cyberpunk-themed macro-economic terminal designed for zero-paddi
 
 * **Cyberpunk Trading Floor UI**: A sleek, dark-themed HTML/JS/Tailwind CSS dashboard with neon accents, custom scrollbars, and dynamic glowing indicators.
 * **Live Text Intel Feed Engine**: A real-time multi-stream asynchronous pipeline built on FastAPI WebSockets (`/ws/intel`), streaming color-coded intelligence directly to the UI.
-* **6 Independent Ingestion Streams**:
+* **Interactive Manual Pinning Subsystem**: Operators can manually pin active logs using a Pin icon, clipping elements to a dedicated absolute header zone (`#pinned-alerts`) at the top of the feed container.
+* **7 Independent Ingestion Streams**:
   * `[SYSTEM]`: Server status and PostgreSQL mirroring heartbeat.
   * `[VOLATILITY]`: High-frequency delta surging tracker tracking anomalies > 1.5%.
   * `[MACRO]`: RSS pipeline for global structural news alerts.
   * `[LIQUIDATION]`: Native Binance WebSocket `!forceOrder@arr` integration parsing blocks > $5M.
   * `[DIVERGENCE]`: Hourly inter-market macro correlation checks (e.g., DXY vs GOLD).
   * `[INSTITUTIONAL]`: Angel One SmartAPI Level 2 depth monitoring for domestic NSE flows.
+  * `[TRUTH_SOCIAL]`: Live scraping of Donald Trump's public profile timeline at 60s intervals with state persistence to maintain the latest telemetry.
+* **TRUMP METER & Rhetoric Radar**: Upgraded indicator showing sentiment polarity and severity metrics from the latest Truth Social activity. Backed by a beautiful, gold-accented portrait avatar.
 * **3-Tier Whale Categorization Algorithm**: Automatically classifies deep liquidity blocks into `[SIGNIFICANT]`, `[HEAVY DESK]`, and `[SYSTEMIC WHALE]`.
 * **Live Video Console**: 7 verified global geopolitical and macro video streams (Bloomberg, NDTV Profit, Firstpost, CNA Asia, NBC, DW, Live War Feed) bypassing strict YouTube embedding configurations.
 * **Macro Economic Dashboard**: A glassmorphic 4-box CSS grid tracking the Federal Reserve Rate, US NFP, CPI, and Live Market Mood.

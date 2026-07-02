@@ -259,11 +259,16 @@ async def pipeline_yfinance_tickers(pool):
                     # Run blocking yfinance in thread
                     stock = await asyncio.to_thread(yf.Ticker, ticker)
                     hist = await asyncio.to_thread(stock.history, period="1mo")
+                    hist_live = await asyncio.to_thread(stock.history, period="1d", interval="1m")
                     
                     if len(hist) < 2:
                         continue
                         
-                    current_price = float(hist['Close'].iloc[-1])
+                    if not hist_live.empty:
+                        current_price = float(hist_live['Close'].iloc[-1])
+                    else:
+                        current_price = float(hist['Close'].iloc[-1])
+                        
                     prev_price = float(hist['Close'].iloc[-2])
                     
                     baseline_1w = float(hist['Close'].iloc[-6]) if len(hist) >= 6 else prev_price

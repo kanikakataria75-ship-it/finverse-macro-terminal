@@ -9,7 +9,7 @@ from typing import List, Dict
 try:
     from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
     from fastapi.middleware.cors import CORSMiddleware
-    from pydantic import BaseModel
+    from pydantic import BaseModel, Field
     import asyncpg
     import uvicorn
     from dotenv import load_dotenv
@@ -37,6 +37,14 @@ DB_NAME = "finverse"
 DB_USER = "postgres"
 DB_PASS = os.getenv("DB_PASSWORD")
 DB_PORT = "5432"
+
+class IngestPayload(BaseModel):
+    post_id: str
+    timestamp: str
+    raw_text: str
+    source: str = "TRUTH_SOCIAL"
+    published_at: str = "Unknown"
+    is_new: bool = True
 
 # ---------------------------------------------------------
 # CACHE & APM STATE
@@ -184,6 +192,127 @@ async def get_country_history(iso: str):
             "current_state": dict(state) if state else None,
             "historical_charts": chart_data
         }
+
+@app.post("/api/macro/ingest")
+async def ingest_macro_signal(payload: IngestPayload):
+    """
+    Ingest a raw signal (e.g., from Truth Social), apply intent classification
+    and fiscal contextual filters to compute an Impact Score.
+    """
+    text = payload.raw_text.lower()
+    
+    # ---------------------------------------------------------
+    # STAGE 1: INTENT CLASSIFIER
+    # ---------------------------------------------------------
+    classification = "[POLICY_SIGNAL]"  # Default for demonstration
+    
+    if any(kw in text for kw in ["happy", "great day", "check out", "follow", "social"]):
+        classification = "[SOCIAL/PROMOTIONAL]"
+    elif any(kw in text for kw in ["pray", "thoughts", "humanitarian aid", "sending our prayers"]):
+        classification = "[HUMANITARIAN/EMERGENCY_RESPONSE]"
+    elif any(kw in text for kw in ["ultimatum", "military", "brics", "existential", "threat"]):
+        classification = "[GEOPOLITICAL_SIGNAL]"
+    elif any(kw in text for kw in ["tariff", "growth", "stimulus", "tax", "funding", "recovery", "repair"]):
+        classification = "[POLICY_SIGNAL]"
+
+    # If classified as SOCIAL or HUMANITARIAN, immediately bypass sentiment engine and drop the signal
+    if classification in ["[SOCIAL/PROMOTIONAL]", "[HUMANITARIAN/EMERGENCY_RESPONSE]"]:
+        return {
+            "post_id": payload.post_id,
+            "timestamp": payload.timestamp,
+            "classification": classification,
+            "metrics": {
+                "base_sentiment": 0.0,
+                "intent_factor_phi": 0.0,
+                "source_weight": 0.0,
+                "final_impact_score": 0.0
+            },
+            "sentiment_state": "NEUTRAL/STABILIZING",
+            "terminal_action": "NO_DASHBOARD_TRIGGER"
+        }
+
+    # ---------------------------------------------------------
+    # STAGE 2: SENTIMENT ENGINE WITH FISCAL CONTEXTUAL FILTERS
+    # ---------------------------------------------------------
+    # Mock Base Sentiment extraction (would typically be an LLM or NLP model call)
+    base_sentiment = 0.8 if any(kw in text for kw in ["growth", "stimulus", "tremendous", "opportunity"]) else -0.5
+    
+    # Determine IntentFactor (phi) based on specific rules
+    phi = 1.0
+    sub_classification = classification
+    
+    if classification == "[POLICY_SIGNAL]":
+        if any(kw in text for kw in ["recovery", "repair funding", "disaster recovery"]):
+            # Dampened heavily to ensure "reactive repair capital" isn't misclassified as bullish economic growth
+            phi = 0.2
+            sub_classification = "POLICY_SIGNAL/RECOVERY"
+        elif any(kw in text for kw in ["threat", "regulatory risk"]):
+            phi = 0.8
+            sub_classification = "POLICY_SIGNAL/THREAT"
+        else:
+            # Growth, Direct Stimulus, or Bilateral Trade Signals
+            phi = 1.0
+            sub_classification = "POLICY_SIGNAL"
+            
+    elif classification == "[GEOPOLITICAL_SIGNAL]":
+        sub_classification = "GEOPOLITICAL_SIGNAL"
+        phi = 0.9  # Geopolitical Ultimatums or Sector Threats (0.8 to 1.0)
+        
+    # Weights Setup
+    w_source = 2.0 if "ultimatum" in text else 1.5
+    t_decay = 1.0
+    
+    # Impact Score Calculation (Impact_Score = W_source * S_w * T_decay)
+    s_w = base_sentiment * phi
+    impact_score = w_source * s_w * t_decay
+    
+    # ---------------------------------------------------------
+    # STAGE 3: STRUCTURED PAYLOAD OUTPUT (Determine State/Action)
+    # ---------------------------------------------------------
+    if impact_score >= 0.5:
+        sentiment_state = "BULLISH"
+    elif impact_score <= -0.5:
+        sentiment_state = "BEARISH/INTERVENTIONIST"
+    else:
+        sentiment_state = "NEUTRAL/STABILIZING"
+        
+    if "existential" in text or "ultimatum" in text:
+        sentiment_state = "CRITICAL"
+        
+    terminal_action = "MARKET_ALERT" if abs(impact_score) >= 0.5 else "REGIONAL_MONITORING"
+    
+    response_payload = {
+        "post_id": payload.post_id,
+        "timestamp": payload.timestamp,
+        "classification": sub_classification,
+        "metrics": {
+            "base_sentiment": base_sentiment,
+            "intent_factor_phi": phi,
+            "source_weight": w_source,
+            "final_impact_score": round(impact_score, 4)
+        },
+        "sentiment_state": sentiment_state,
+        "terminal_action": terminal_action
+    }
+    
+    # Log the output
+    logger.info(f"Processed Signal Output: {json.dumps(response_payload)}")
+    
+    # Broadcast to websocket clients so the UI updates
+    broadcast_data = {
+        "tag": "[TRUTH_SOCIAL]",
+        "tier": f"[{sentiment_state}]",
+        "asset": "TRUMP",
+        "message": payload.raw_text,
+        "classification": sub_classification,
+        "metrics": response_payload["metrics"],
+        "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "published_at": payload.published_at,
+        "is_new": payload.is_new
+    }
+    asyncio.create_task(broadcast_intel(json.dumps(broadcast_data)))
+    
+    return response_payload
 
 # ---------------------------------------------------------
 # WEBSOCKETS

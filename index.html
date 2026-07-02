@@ -274,15 +274,12 @@
                 </h2>
                 
                 <div class="flex flex-col items-center relative z-10">
-                    <div id="trump-profile" class="w-20 h-20 rounded-full border border-accent bg-[#0d131f] flex items-center justify-center mb-4 transition-all duration-300 relative">
-                        <div class="absolute inset-0 rounded-full border-2 border-transparent"></div>
-                        <svg class="w-12 h-12 text-muted transition-colors" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                        </svg>
+                    <div id="trump-profile" class="w-20 h-20 rounded-full border-2 border-[#FFD700] bg-[#0d131f] flex items-center justify-center mb-4 transition-all duration-300 relative shadow-[0_0_15px_rgba(255,215,0,0.6)] overflow-hidden">
+                        <img src="image_feb74e.jpg" alt="Trump Profile" class="w-full h-full object-cover object-top" style="border-radius: 50%;">
                     </div>
                     
-                    <div class="w-full relative mb-5">
-                        <div class="text-[9px] text-center text-muted uppercase tracking-wider mb-2 font-mono">Truth Social Instability Impact Meter</div>
+                    <div class="w-full relative mb-5 mt-2">
+                        <div class="text-[18px] text-center uppercase tracking-widest mb-3 font-mono font-black" style="color: #FFD700; text-shadow: 0 0 10px rgba(255,49,49,0.8), 0 0 20px rgba(255,215,0,0.4); letter-spacing: 0.15em;">TRUMP METER</div>
                         <div class="relative w-full h-16 flex justify-center overflow-visible">
                             <svg viewBox="0 0 100 50" class="w-4/5 overflow-visible">
                                 <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round"/>
@@ -294,11 +291,8 @@
                         </div>
                     </div>
                     
-                    <button id="btn-simulate" class="w-full bg-[#1e293b]/50 hover:bg-[#1e293b] border border-accent hover:border-crimson/50 text-[10px] font-mono text-hc py-2.5 rounded transition-all uppercase tracking-wider shadow-sm flex items-center justify-center gap-2">
-                        <span>[SIMULATE TRUMP HIGH-IMPACT POST]</span>
-                    </button>
-                    
-                    <div id="post-container" class="w-full mt-4 text-[11px] font-mono text-hc leading-relaxed hidden bg-gradient-to-r from-crimson/20 to-transparent p-3 border-l-2 border-crimson rounded-r shadow-inner">
+                    <div id="post-container" class="w-full mt-4 text-[11px] font-mono text-hc leading-[1.6] hidden bg-[#05080f] border border-accent rounded shadow-inner overflow-hidden p-3 break-words relative">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-crimson"></div>
                     </div>
                 </div>
             </div>
@@ -520,53 +514,13 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             
-            // 1. Rhetoric Radar Simulation
-            const btnSimulate = document.getElementById('btn-simulate');
+            // 1. Rhetoric Radar Elements
             const trumpProfile = document.getElementById('trump-profile');
             const rhetoricRadar = document.getElementById('rhetoric-radar');
             const meterNeedle = document.getElementById('meter-needle');
             const meterFill = document.getElementById('meter-fill');
             const postContainer = document.getElementById('post-container');
             const mapChina = document.getElementById('map-china');
-
-            let simulationActive = false;
-
-            btnSimulate.addEventListener('click', () => {
-                if(simulationActive) return;
-                simulationActive = true;
-                
-                // Audio/Haptic visual feedback
-                trumpProfile.classList.add('pulse-crimson');
-                trumpProfile.style.borderColor = '#ef4444';
-                trumpProfile.querySelector('svg').classList.remove('text-muted');
-                trumpProfile.querySelector('svg').classList.add('text-crimson');
-                
-                rhetoricRadar.classList.add('shake');
-                setTimeout(() => rhetoricRadar.classList.remove('shake'), 500);
-
-                // Meter rotation (0 to 180 degrees mapping. 97.5% of 180 = ~175.5 deg)
-                meterNeedle.style.transform = `rotate(175.5deg)`;
-                
-                // Update meter stroke color & length (dashoffset)
-                meterFill.setAttribute('stroke', '#ef4444');
-                // Total length is approx 125.6. 100% = offset 0. 97.5% = offset 125.6 * (1 - 0.975) = 3.14
-                meterFill.style.strokeDashoffset = '3.14';
-
-                // Display post with typing effect simulation
-                postContainer.classList.remove('hidden');
-                postContainer.innerHTML = `<span class="font-bold text-crimson">@realDonaldTrump:</span> "Effective immediately, we are evaluating a complete 35% custom tariff matrix on all incoming machinery and technology pipelines out of Asian trade clusters!"`;
-                
-                // Instantly highlight China
-                if(mapChina) {
-                    mapChina.classList.add('glow-china');
-                    mapChina.querySelector('path').setAttribute('fill', 'rgba(239, 68, 68, 0.4)');
-                }
-                
-                // Add to text log
-                addLog("TRUTH SOCIAL PROXY: Key personnel signaling potential tariff accelerations (97.5% Severity)", true);
-                
-                setTimeout(() => { simulationActive = false; }, 3000);
-            });
 
             // 2. Timeframe Toggles logic
             document.querySelectorAll('.asset-card').forEach(card => {
@@ -737,6 +691,31 @@
 
             setInterval(updateFeedVelocity, 1000);
             
+            // Pinned State Map
+            const pinnedLogs = new Set();
+            
+            function togglePinLog(logEl, isCritical, logHTML) {
+                // If it's currently pinned, unpin it
+                if(pinnedContainer.contains(logEl)) {
+                    pinnedContainer.removeChild(logEl);
+                    logEl.className = `border-l-2 border-accent pl-2 py-0.5 bg-card/40 leading-tight relative group pr-6`;
+                    if (isCritical) {
+                        logEl.className = `border-l-2 border-[#FF3131] pl-2 py-0.5 bg-[#FF3131]/10 leading-tight relative group pr-6`;
+                    }
+                    // Insert at top of normal log container, right below pinned alerts container
+                    logContainer.insertBefore(logEl, pinnedContainer.nextSibling);
+                    logEl.querySelector('.pin-btn').classList.remove('text-[#FFD700]');
+                    logEl.querySelector('.pin-btn').classList.add('text-muted');
+                } else {
+                    // Pin it
+                    logContainer.removeChild(logEl);
+                    logEl.className = `border-2 border-[#FFD700] pl-2 py-1 bg-[#FFD700]/10 shadow-[0_0_10px_rgba(255,215,0,0.2)] rounded leading-tight relative group transition-all pr-6`;
+                    pinnedContainer.appendChild(logEl);
+                    logEl.querySelector('.pin-btn').classList.remove('text-muted');
+                    logEl.querySelector('.pin-btn').classList.add('text-[#FFD700]');
+                }
+            }
+
             function appendLogPacket(packet) {
                 alertTimestamps.push(Date.now());
                 updateFeedVelocity();
@@ -774,41 +753,40 @@
                     assetHtml = ` ${packet.asset}:`;
                 }
                 
+                // Pin Button SVG
+                const pinSvg = `<svg class="w-3.5 h-3.5 pin-btn absolute right-2 top-1.5 text-muted hover:text-[#FFD700] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity z-10" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>`;
+                
                 // Institutional Wire Format
-                const logHTML = `<span class="text-muted mr-1 flash-timestamp">[${packet.timestamp}]</span><span class="${themeColorClass} font-bold">${packet.tag}${tierHtml}${assetHtml}</span> <span class="text-hc opacity-90 ${textClass}">${packet.message}</span>`;
+                const logHTML = `<span class="text-muted mr-1 flash-timestamp">[${packet.timestamp}]</span><span class="${themeColorClass} font-bold">${packet.tag}${tierHtml}${assetHtml}</span> <span class="text-hc opacity-90 ${textClass} inline-block">${packet.message}</span>${pinSvg}`;
                 
                 const logEl = document.createElement('div');
                 
+                // All logs start unpinned now
+                logEl.className = `border-l-2 border-accent pl-2 py-0.5 animate-pulse bg-card/40 leading-tight relative group pr-6`;
                 if (isCritical) {
-                    logEl.className = `border-2 border-[#FF3131] pl-2 py-1 bg-[#FF3131]/20 shadow-[0_0_15px_rgba(255,49,49,0.4)] rounded glitch-flash leading-tight`;
-                    logEl.innerHTML = logHTML;
-                    pinnedContainer.appendChild(logEl);
-                    
-                    // Unpin after 10 minutes (600,000 ms)
-                    setTimeout(() => {
-                        if (pinnedContainer.contains(logEl)) {
-                            pinnedContainer.removeChild(logEl);
-                            logEl.className = `border-l-2 border-[#FF3131] pl-2 py-0.5 bg-[#FF3131]/10 leading-tight`;
-                            logContainer.insertBefore(logEl, pinnedContainer.nextSibling);
-                        }
-                    }, 600000);
-                } else {
-                    logEl.className = `border-l-2 border-accent pl-2 py-0.5 animate-pulse bg-card/40 leading-tight`;
-                    if (isMacro) {
-                        logEl.classList.add('border-[#FFD700]', 'bg-[#FFD700]/10');
-                    } else if (themeColorClass === "text-crimson") {
-                        logEl.classList.add('border-crimson', 'bg-crimson/10');
-                    } else if (themeColorClass === "text-neon") {
-                        logEl.classList.add('border-neon', 'bg-neon/10');
-                    }
-                    logEl.innerHTML = logHTML;
-                    logContainer.appendChild(logEl);
-                    setTimeout(() => logEl.classList.remove('animate-pulse'), 1000);
+                    logEl.className = `border-l-2 border-[#FF3131] pl-2 py-0.5 bg-[#FF3131]/10 leading-tight glitch-flash relative group pr-6`;
+                } else if (isMacro) {
+                    logEl.classList.add('border-[#FFD700]', 'bg-[#FFD700]/10');
+                } else if (themeColorClass === "text-crimson") {
+                    logEl.classList.add('border-crimson', 'bg-crimson/10');
+                } else if (themeColorClass === "text-neon") {
+                    logEl.classList.add('border-neon', 'bg-neon/10');
                 }
                 
-                // Cleanup normal logs to prevent infinite DOM growth (keep ~50 standard logs)
+                logEl.innerHTML = logHTML;
+                
+                // Add event listener to pin button
+                logEl.querySelector('.pin-btn').addEventListener('click', () => {
+                    togglePinLog(logEl, isCritical, logHTML);
+                });
+                
+                logContainer.appendChild(logEl);
+                setTimeout(() => logEl.classList.remove('animate-pulse', 'glitch-flash'), 1000);
+                
+                // Cleanup normal logs to prevent infinite DOM growth
                 if(logContainer.childElementCount > 51) {
-                    if (logContainer.children[1]) {
+                    // Be careful not to delete pinned container which is child [0]
+                    if (logContainer.children[1] && logContainer.children[1].id !== 'pinned-alerts') {
                         logContainer.removeChild(logContainer.children[1]);
                     }
                 }
@@ -913,6 +891,59 @@
                 ws.onmessage = function(event) {
                     try {
                         const packet = JSON.parse(event.data);
+                        
+                        if (packet.tag === "[TRUTH_SOCIAL]") {
+                            const rhetoricRadar = document.getElementById('rhetoric-radar');
+                            const meterNeedle = document.getElementById('meter-needle');
+                            const meterFill = document.getElementById('meter-fill');
+                            const postContainer = document.getElementById('post-container');
+                            const trumpProfile = document.getElementById('trump-profile');
+                            
+                            // Visual trigger
+                            if(trumpProfile) {
+                                trumpProfile.classList.add('pulse-crimson');
+                                trumpProfile.style.borderColor = '#ef4444';
+                                trumpProfile.style.boxShadow = '0 0 25px rgba(239, 68, 68, 0.8)';
+                            }
+                            if(rhetoricRadar) {
+                                rhetoricRadar.classList.add('shake');
+                                setTimeout(() => rhetoricRadar.classList.remove('shake'), 500);
+                            }
+                            
+                            setTimeout(() => {
+                                if(trumpProfile) {
+                                    trumpProfile.classList.remove('pulse-crimson');
+                                    trumpProfile.style.borderColor = '#FFD700';
+                                    trumpProfile.style.boxShadow = '0 0 15px rgba(255, 215, 0, 0.6)';
+                                }
+                            }, 4000);
+                            
+                            // Score mapping to visual gauge
+                            let score = 0;
+                            if (packet.metrics && packet.metrics.final_impact_score !== undefined) {
+                                score = packet.metrics.final_impact_score;
+                            }
+                            let severity = Math.min(Math.abs(score) / 2.0, 1.0);
+                            let deg = severity * 180;
+                            if(meterNeedle) meterNeedle.style.transform = `rotate(${deg}deg)`;
+                            if(meterFill) {
+                                meterFill.setAttribute('stroke', score >= 0.5 ? '#10b981' : '#ef4444');
+                                let dashoffset = 125.6 * (1 - severity);
+                                meterFill.style.strokeDashoffset = dashoffset;
+                            }
+                            
+                            if(postContainer) {
+                                postContainer.classList.remove('hidden');
+                                let textClass = score >= 0.5 ? 'text-neon' : 'text-crimson';
+                                
+                                let statusLine = packet.is_new ? '<span class="text-neon blink uppercase tracking-widest font-bold">STATUS: NEW INTEL DETECTED</span>' : '<span class="text-muted uppercase tracking-widest">STATUS: NO NEW POSTS NOW - MONITORING ACTIVE</span>';
+                                
+                                let postDate = packet.published_at ? packet.published_at : "Just now";
+                                
+                                postContainer.innerHTML = `<span class="font-bold ${textClass}">@realDonaldTrump:</span> "${packet.message}"<br><span class="text-[9px] mt-2 block opacity-70">CLASS: ${packet.classification} | SCORE: ${score} <br> POSTED: <span class="text-[#FFD700]">${postDate}</span> <br><br> ${statusLine}</span>`;
+                            }
+                        }
+                        
                         appendLogPacket(packet);
                     } catch (e) {
                         console.error("Failed to parse WebSocket packet:", e);
@@ -1115,6 +1146,43 @@
                 el.addEventListener('change', (e) => {
                     radar.currentMode = e.target.value;
                     radar.updateHeatmap();
+                });
+            });
+
+            // Live Video Console Logic
+            const videoFrame = document.getElementById('news-player');
+            const channelBtns = document.querySelectorAll('.channel-btn');
+            
+            const LIVE_STREAMS = {
+                bloomberg: 'live_stream?channel=UCNye-wNBqNL5ZzHSJj3l8Bg',
+                ndtv_profit: 'EN-N1xhtBqU',
+                firstpost: 'GgnIf1TPHsA',
+                nbc_us: '7cxCCru7QLI',
+                cna_asia: 'XWq5kBlakcQ',
+                dw_europe: 'LuKwFajn37U',
+                war_feed: 'gCNeDWCI0vo'
+            };
+
+            channelBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const selectedChannel = e.currentTarget.getAttribute('data-channel');
+                    if(selectedChannel && LIVE_STREAMS[selectedChannel]) {
+                        let streamPath = LIVE_STREAMS[selectedChannel];
+                        let separator = streamPath.includes('?') ? '&' : '?';
+                        videoFrame.src = `https://www.youtube.com/embed/${streamPath}${separator}autoplay=1&mute=1`;
+                        
+                        channelBtns.forEach(b => {
+                            if(!b.classList.contains('text-crimson')) {
+                                b.classList.remove('bg-accent', 'text-hc');
+                                b.classList.add('bg-primary/50', 'text-muted');
+                            }
+                        });
+                        
+                        if(!e.currentTarget.classList.contains('text-crimson')) {
+                            e.currentTarget.classList.remove('bg-primary/50', 'text-muted');
+                            e.currentTarget.classList.add('bg-accent', 'text-hc');
+                        }
+                    }
                 });
             });
 

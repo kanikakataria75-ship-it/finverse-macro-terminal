@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Phase 3] - 2026-07-03
+
+### Added
+- **Truth Social State Persistence Pipeline**: Configured scraper in `truth_scraper.py` to cache the latest post and force push it to the backend every 60 seconds to maintain visual terminal state even if no new posts are parsed.
+- **Real-Time Post Timestamp Extraction**: Scraper now parses the actual post timestamp directly from the HTML and forwards it down the pipeline.
+- **Interactive Manual Pinning Subsystem**: Replaced auto-pinning with a manual client-side JS pin/unpin handler, allowing operators to pin logs to the top header section.
+- **Trump Profile Avatar**: Integrated local asset `image_feb74e.jpg` with standard 50% circular clipping, face centering, and gold-themed neon glowing border circles.
+
+### Changed
+- **Rhetoric Radar UI Overhaul**: Upgraded component to "TRUMP METER" with glowing monospace neon-amber styling, deleted the simulation button, and restructured the raw text readout box with word-wrap protections.
+- **FastAPI Payload Schema**: Updated `IngestPayload` and WS broadcasts in `server.py` to support `published_at` and `is_new` payload fields.
+
 ## [Unreleased] - 2026-07-01
 
 ### Added
