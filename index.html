@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finverse World Macro Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/topojson-client@3"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -221,9 +222,12 @@
 
     <!-- 3. UNIFIED GLOBAL SEARCH & HIGHLIGHT NAVIGATION -->
     <div class="px-4 py-2 border-b border-accent bg-primary shrink-0 relative z-10 flex flex-col gap-2">
-        <div class="relative max-w-3xl mx-auto w-full">
+        <div class="relative max-w-3xl mx-auto w-full" id="search-container">
             <svg class="w-4 h-4 absolute left-3 top-2.5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <input id="global-search" type="text" class="w-full bg-[#0d131f] border border-accent rounded text-sm text-hc px-9 py-1.5 focus:outline-none focus:border-neon focus:ring-1 focus:ring-neon placeholder-muted font-mono transition-all shadow-inner" placeholder="Search Country or Local Indian Sector (e.g., US, IT, AUTO)...">
+            <input id="global-search" type="text" class="w-full bg-[#0d131f] border border-accent rounded text-sm text-hc px-9 py-1.5 focus:outline-none focus:border-neon focus:ring-1 focus:ring-neon placeholder-muted font-mono transition-all shadow-inner relative z-50" placeholder="Search Financial Assets, Indices, or Equities (e.g., NIFTY50, BTCUSD)..." autocomplete="off">
+            <div id="search-dropdown" class="hidden absolute top-full left-0 w-full mt-1 bg-[#0d131f] border border-accent rounded shadow-xl z-50 max-h-60 overflow-y-auto font-mono text-sm">
+                <!-- Injected via JS -->
+            </div>
         </div>
         
         <!-- Live World Timezones & Market Status Tracker -->
@@ -232,31 +236,31 @@
             <div class="flex items-center gap-1.5">
                 <span id="status-tokyo" class="w-1.5 h-1.5 rounded-full bg-muted"></span>
                 <span class="text-muted">TOKYO:</span>
-                <span id="time-tokyo" class="text-hc font-bold">--:--:--</span>
+                <span id="tokyo-clock" class="text-hc font-bold">--:--:--</span>
             </div>
             <!-- London -->
             <div class="flex items-center gap-1.5">
                 <span id="status-london" class="w-1.5 h-1.5 rounded-full bg-muted"></span>
                 <span class="text-muted">LONDON:</span>
-                <span id="time-london" class="text-hc font-bold">--:--:--</span>
+                <span id="london-clock" class="text-hc font-bold">--:--:--</span>
             </div>
             <!-- India -->
             <div class="flex items-center gap-1.5">
                 <span id="status-india" class="w-1.5 h-1.5 rounded-full bg-muted"></span>
                 <span class="text-muted">INDIA:</span>
-                <span id="time-india" class="text-hc font-bold">--:--:--</span>
+                <span id="india-clock" class="text-hc font-bold">--:--:--</span>
             </div>
             <!-- USA -->
             <div class="flex items-center gap-1.5">
                 <span id="status-usa" class="w-1.5 h-1.5 rounded-full bg-muted"></span>
                 <span class="text-muted">USA:</span>
-                <span id="time-usa" class="text-hc font-bold">--:--:--</span>
+                <span id="usa-clock" class="text-hc font-bold">--:--:--</span>
             </div>
         </div>
     </div>
 
     <!-- 2. COMPREHENSIVE 3-COLUMN RADAR LAYOUT SCHEMA -->
-    <div class="flex-1 flex overflow-hidden p-4 gap-4">
+    <div id="terminal-main-workspace" class="flex-1 flex overflow-hidden p-4 gap-4 transition-opacity duration-300">
         
         <!-- LEFT PANEL (25%) -->
         <div class="w-1/4 flex flex-col gap-4 overflow-y-auto">
@@ -1251,5 +1255,297 @@
         </div>
     </div>
 
+    </div> <!-- Close terminal-main-workspace -->
+
+    <!-- FULL-PAGE WORKSPACE SWAP ARCHITECTURE -->
+    <div id="terminal-asset-dedicated-workspace" class="hidden absolute inset-0 bg-background z-[100] flex flex-col p-6 gap-6 transition-all duration-300 overflow-hidden">
+        <!-- TOP NAVIGATION HEADER -->
+        <div class="flex items-center justify-between border-b border-accent pb-4 shrink-0">
+            <button onclick="toggleWorkspace('main')" class="text-neon border border-neon/50 px-4 py-2 hover:bg-neon/10 transition-colors tracking-widest text-sm font-bold uppercase shadow-[0_0_10px_rgba(0,240,255,0.2)]">
+                [ BACK TO TERMINAL CORE ]
+            </button>
+        </div>
+
+        <!-- 2-COLUMN FAS MATRIX LAYOUT -->
+        <div class="flex-1 grid grid-cols-10 gap-6 min-h-0">
+            <!-- LEFT PANEL (70%) -->
+            <div class="col-span-7 flex flex-col gap-4 min-w-0">
+                <div class="shrink-0">
+                    <h1 id="ts-asset-name" class="text-5xl font-black text-hc tracking-tight truncate filter drop-shadow-lg uppercase">ASSET NAME</h1>
+                    <h2 id="ts-ticker" class="text-xl text-neon font-mono mt-1 tracking-widest uppercase">TICKER</h2>
+                </div>
+                
+                <!-- TRADINGVIEW ADVANCED CHART -->
+                <div class="flex-1 w-full bg-card border border-accent/50 rounded shadow-[inset_0_0_30px_rgba(0,0,0,0.6)] overflow-hidden" id="tv-advanced-chart-container">
+                    <!-- Widget Injected Here -->
+                </div>
+                
+                <!-- LOWER GRID: CORRELATION MATRIX -->
+                <div class="grid grid-cols-2 gap-4 shrink-0 h-40">
+                    <div class="bg-card border border-accent p-5 rounded-lg shadow-lg overflow-y-auto">
+                        <h3 class="text-neon text-xs font-bold uppercase tracking-widest mb-3 border-b border-accent/50 pb-2">Events, Past Event Analysis</h3>
+                        <p id="ts-events-analysis" class="text-hc text-sm leading-relaxed opacity-90">--</p>
+                    </div>
+                    <div class="bg-card border border-accent p-5 rounded-lg shadow-lg overflow-y-auto">
+                        <h3 class="text-neon text-xs font-bold uppercase tracking-widest mb-3 border-b border-accent/50 pb-2">Price Movement (1W) V/S Past Event Correlation</h3>
+                        <p id="ts-price-correlation" class="text-hc text-sm leading-relaxed opacity-90">--</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL (30%) -->
+            <div class="col-span-3 flex flex-col gap-4 min-w-0 overflow-y-auto custom-scrollbar pr-2">
+                <!-- FAS SCORE DASHBOARD -->
+                <div class="bg-card border border-accent p-8 rounded-lg shadow-xl relative overflow-hidden text-center flex flex-col items-center justify-center shrink-0 min-h-[160px]">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 blur-2xl rounded-full"></div>
+                    <h3 class="text-muted text-sm uppercase tracking-widest mb-2">FAS Score</h3>
+                    <div id="ts-fas-score" class="text-7xl font-black text-amber-500 tracking-tighter drop-shadow-[0_0_25px_rgba(245,158,11,0.5)]">--</div>
+                </div>
+                
+                <!-- DEFINING RANGE OF FAS -->
+                <div class="bg-card border border-accent p-5 rounded-lg shadow-xl shrink-0">
+                    <h3 class="text-muted text-xs uppercase tracking-widest mb-4 border-b border-accent/50 pb-2">Defining Range of FAS</h3>
+                    <div class="flex gap-3 justify-center" id="ts-range-badges">
+                        <span id="badge-undervalued" class="px-3 py-1.5 text-xs font-bold border border-accent rounded text-muted transition-colors">Undervalued</span>
+                        <span id="badge-neutral" class="px-3 py-1.5 text-xs font-bold border border-accent rounded text-muted transition-colors">Neutral</span>
+                        <span id="badge-overvalued" class="px-3 py-1.5 text-xs font-bold border border-accent rounded text-muted transition-colors">Overvalued</span>
+                    </div>
+                </div>
+                
+                <!-- MAIN SUMMARY DATA GRID -->
+                <div class="bg-card border border-accent p-6 rounded-lg shadow-xl flex-1 flex flex-col">
+                    <div class="flex justify-between py-3 border-b border-accent/50 items-center">
+                        <span class="text-muted text-sm tracking-wide">Support Point</span>
+                        <span class="text-hc font-mono font-black text-xl" id="ts-support">--</span>
+                    </div>
+                    <div class="flex justify-between py-3 border-b border-accent/50 items-center">
+                        <span class="text-muted text-sm tracking-wide">Resistance Line</span>
+                        <span class="text-hc font-mono font-black text-xl" id="ts-resistance">--</span>
+                    </div>
+                    
+                    <div class="mt-6 flex-1">
+                        <h3 class="text-muted text-xs uppercase tracking-widest mb-3 border-b border-accent/50 pb-2">Financials Analysis</h3>
+                        <p id="ts-financials-analysis" class="text-hc text-sm leading-relaxed opacity-90">--</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global Clock Timer Independence
+        setInterval(() => {
+            const now = new Date();
+            const opts = { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            if(document.getElementById('tokyo-clock')) document.getElementById('tokyo-clock').innerText = now.toLocaleTimeString('en-US', { ...opts, timeZone: 'Asia/Tokyo' });
+            if(document.getElementById('london-clock')) document.getElementById('london-clock').innerText = now.toLocaleTimeString('en-US', { ...opts, timeZone: 'Europe/London' });
+            if(document.getElementById('india-clock')) document.getElementById('india-clock').innerText = now.toLocaleTimeString('en-US', { ...opts, timeZone: 'Asia/Kolkata' });
+            if(document.getElementById('usa-clock')) document.getElementById('usa-clock').innerText = now.toLocaleTimeString('en-US', { ...opts, timeZone: 'America/New_York' });
+
+            // Market Status Tracker
+            const setStatus = (id, isOpen) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (isOpen) {
+                        el.classList.remove('bg-muted', 'bg-red-500');
+                        el.classList.add('bg-green-500', 'pulse-glow');
+                    } else {
+                        el.classList.remove('bg-muted', 'bg-green-500', 'pulse-glow');
+                        el.classList.add('bg-red-500');
+                    }
+                }
+            };
+
+            const getParts = (tz) => {
+                const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(now);
+                let w = '', h = 0, m = 0;
+                for(let p of parts) {
+                    if (p.type === 'weekday') w = p.value;
+                    if (p.type === 'hour') h = parseInt(p.value);
+                    if (p.type === 'minute') m = parseInt(p.value);
+                }
+                const isWeekend = w === 'Sat' || w === 'Sun';
+                return { isWeekend, time: h + m/60 };
+            };
+
+            const t = getParts('Asia/Tokyo');
+            setStatus('status-tokyo', !t.isWeekend && t.time >= 9 && t.time <= 15);
+
+            const l = getParts('Europe/London');
+            setStatus('status-london', !l.isWeekend && l.time >= 8 && l.time <= 16.5);
+
+            const i = getParts('Asia/Kolkata');
+            setStatus('status-india', !i.isWeekend && i.time >= 9.25 && i.time <= 15.5);
+
+            const u = getParts('America/New_York');
+            setStatus('status-usa', !u.isWeekend && u.time >= 9.5 && u.time <= 16);
+
+        }, 1000);
+
+        // Dynamic Search & Time-Series Engine Logic
+        const searchInput = document.getElementById('global-search');
+        const searchDropdown = document.getElementById('search-dropdown');
+        const tsModal = document.getElementById('ts-modal');
+        let searchTimeout = null;
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                const query = e.target.value.replace(/\s+/g, '').toUpperCase();
+                if (query.length >= 1) {
+                    openTimeSeries(query);
+                }
+            }
+        });
+
+        searchInput.addEventListener('input', (e) => {
+            let query = e.target.value;
+            if (query.trim().length < 1) {
+                searchDropdown.classList.add('hidden');
+                searchDropdown.innerHTML = '';
+                return;
+            }
+            
+            query = query.replace(/\s+/g, '').toUpperCase();
+            
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const res = await fetch(`http://localhost:8000/api/search?q=${encodeURIComponent(query)}`);
+                    const data = await res.json();
+                    
+                    if (data.length === 0) {
+                        searchDropdown.innerHTML = `<div class="p-3 text-muted text-center">No results found</div>`;
+                    } else {
+                        searchDropdown.innerHTML = data.map(item => `
+                            <div class="p-3 border-b border-accent/50 hover:bg-accent/30 cursor-pointer flex justify-between items-center transition-colors" onclick="openTimeSeries('${item.ticker_symbol}')">
+                                <div>
+                                    <span class="text-hc font-bold">${item.ticker_symbol}</span>
+                                    <span class="text-muted ml-2 text-xs">${item.asset_name}</span>
+                                </div>
+                                <span class="text-xs px-2 py-0.5 rounded bg-primary border border-accent text-neon">${item.fas_score}</span>
+                            </div>
+                        `).join('');
+                    }
+                    searchDropdown.classList.remove('hidden');
+                } catch (err) {
+                    console.error("Search error:", err);
+                }
+            }, 300);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('search-container').contains(e.target)) {
+                searchDropdown.classList.add('hidden');
+            }
+        });
+
+        const mainWorkspace = document.getElementById('terminal-main-workspace');
+        const dedicatedWorkspace = document.getElementById('terminal-asset-dedicated-workspace');
+        
+        function toggleWorkspace(view) {
+            if (view === 'main') {
+                dedicatedWorkspace.style.display = 'none';
+                dedicatedWorkspace.classList.add('hidden');
+                mainWorkspace.style.display = 'flex';
+                mainWorkspace.classList.remove('hidden');
+            } else {
+                mainWorkspace.style.display = 'none';
+                mainWorkspace.classList.add('hidden');
+                dedicatedWorkspace.style.display = 'flex';
+                dedicatedWorkspace.classList.remove('hidden');
+            }
+        }
+
+        async function openTimeSeries(ticker) {
+            searchDropdown.classList.add('hidden');
+            searchInput.value = '';
+            
+            try {
+                const cleanTicker = ticker.replace(/\s+/g, '').toUpperCase();
+                const res = await fetch(`http://localhost:8000/api/asset/${encodeURIComponent(cleanTicker)}/history`);
+                if (!res.ok) throw new Error('Asset data not found');
+                const data = await res.json();
+                
+                console.log("DEBUG: JSON response package intercepted:", data);
+                
+                document.getElementById('ts-asset-name').innerText = data.metadata.asset_name || cleanTicker;
+                document.getElementById('ts-ticker').innerText = cleanTicker;
+                document.getElementById('ts-fas-score').innerText = data.metadata.fas_score || 'N/A';
+                document.getElementById('ts-support').innerText = data.metadata.support_level || 'N/A';
+                document.getElementById('ts-resistance').innerText = data.metadata.resistance_level || 'N/A';
+                document.getElementById('ts-events-analysis').innerText = data.metadata.events_analysis || '--';
+                document.getElementById('ts-price-correlation').innerText = data.metadata.price_correlation || '--';
+                document.getElementById('ts-financials-analysis').innerText = data.metadata.financials_analysis || '--';
+                
+                // Update Badge Colors dynamically
+                const status = data.metadata.range_status || 'Neutral';
+                const bUnder = document.getElementById('badge-undervalued');
+                const bNeutral = document.getElementById('badge-neutral');
+                const bOver = document.getElementById('badge-overvalued');
+                
+                // Reset badges
+                [bUnder, bNeutral, bOver].forEach(b => {
+                    b.className = "px-3 py-1.5 text-xs font-bold border border-accent rounded text-muted transition-colors";
+                });
+                
+                if (status === 'Undervalued') {
+                    bUnder.className = "px-3 py-1.5 text-xs font-bold border border-green-500 bg-green-500/20 text-green-500 transition-colors shadow-[0_0_10px_rgba(34,197,94,0.3)]";
+                } else if (status === 'Overvalued') {
+                    bOver.className = "px-3 py-1.5 text-xs font-bold border border-crimson bg-crimson/20 text-crimson transition-colors shadow-[0_0_10px_rgba(220,38,38,0.3)]";
+                } else {
+                    bNeutral.className = "px-3 py-1.5 text-xs font-bold border border-amber-500 bg-amber-500/20 text-amber-500 transition-colors shadow-[0_0_10px_rgba(245,158,11,0.3)]";
+                }
+                
+                toggleWorkspace('dedicated');
+                
+                // Initialize TV Advanced Chart
+                setTimeout(() => renderAdvancedTVWidget(cleanTicker), 50);
+                
+            } catch (err) {
+                console.error("Time-Series error:", err);
+                document.getElementById('ts-asset-name').innerText = ticker.replace(/\s+/g, '').toUpperCase();
+                document.getElementById('ts-ticker').innerText = 'UNKNOWN';
+                document.getElementById('ts-fas-score').innerText = 'N/A';
+                toggleWorkspace('dedicated');
+            }
+        }
+
+        function renderAdvancedTVWidget(ticker) {
+            const container = document.getElementById('tv-advanced-chart-container');
+            container.innerHTML = '';
+            
+            // Map ticker for TV Widget
+            let dynamicParsedSymbol = ticker;
+            if (ticker === 'NIFTY50' || ticker === 'NIFTY') dynamicParsedSymbol = 'BSE:SENSEX';
+            else if (ticker === 'RELIANCE') dynamicParsedSymbol = 'BSE:RELIANCE';
+            else if (ticker.includes('BTC') || ticker.includes('USDT')) dynamicParsedSymbol = 'BINANCE:BTCUSDT';
+            else dynamicParsedSymbol = ticker;
+            
+            new TradingView.widget({
+                "container_id": "tv-advanced-chart-container",
+                "symbol": dynamicParsedSymbol,
+                "interval": "D",
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "1",
+                "locale": "en",
+                "enable_publishing": false,
+                "backgroundColor": "#090d16",
+                "gridColor": "#1f2937",
+                "hide_top_toolbar": true,
+                "hide_legend": false,
+                "save_image": false,
+                "allow_symbol_change": false,
+                "autosize": true
+            });
+        }
+        
+        window.addEventListener('resize', () => {
+            if (!dedicatedWorkspace.classList.contains('hidden') && document.getElementById('ts-ticker').innerText !== 'TICKER') {
+                openTimeSeries(document.getElementById('ts-ticker').innerText);
+            }
+        });
+    </script>
 </body>
 </html>

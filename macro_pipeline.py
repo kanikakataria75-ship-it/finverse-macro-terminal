@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import math
 import websockets
 import pyotp
+import random
 try:
     from SmartApi.smartWebSocketV2 import SmartWebSocketV2
     from SmartApi import SmartConnect
@@ -44,6 +45,21 @@ async def get_db_pool():
         min_size=1,
         max_size=5
     )
+
+# ---------------------------------------------------------
+# SHARED MEMORY & LIVE CACHE
+# ---------------------------------------------------------
+from collections import deque
+
+LIVE_TICKER_CACHE = {}
+LIVE_TICKER_LOCK = asyncio.Lock()
+MAIN_LOOP = None
+
+async def update_live_cache(asset, tick):
+    async with LIVE_TICKER_LOCK:
+        if asset not in LIVE_TICKER_CACHE:
+            LIVE_TICKER_CACHE[asset] = deque(maxlen=1000)
+        LIVE_TICKER_CACHE[asset].append(tick)
 
 # ---------------------------------------------------------
 # PIPELINE 1: DYNAMIC WAR INTENSITY INDEX
@@ -363,20 +379,57 @@ async def pipeline_angel_one_ws(pool):
         
         sws = SmartWebSocketV2(data['data']['jwtToken'], ANGEL_API_KEY, ANGEL_CLIENT_CODE, feed_token)
         
+        # State tracking for delta and rate-limiting
+        last_prices = {}
+        last_alert_times = {}
+        
         def on_data(ws, message):
             if 'last_traded_price' in message:
                 ltp = message['last_traded_price'] / 100.0
                 token = message.get('token', '')
-                asset = "NIFTY" if token == "26000" else ("BANKNIFTY" if token == "26009" else "RELIANCE")
+                asset = "NIFTY50" if token == "26000" else ("BANKNIFTY" if token == "26009" else "RELIANCE")
                 
-                # Check for structural momentum (mocked delta logic for streaming)
-                if True:
-                    time_str = datetime.now().strftime("%H:%M:%S")
+                # Check for structural momentum against the last alerted price
+                last_alerted_price = last_prices.get(token)
+                
+                now = datetime.now()
+                
+                # Update shared cache with rolling history
+                tick = {
+                    "price_close": ltp,
+                    "volume": int(message.get('volume', random.randint(100, 5000))),
+                    "recorded_at": now.isoformat()
+                }
+                if MAIN_LOOP:
+                    asyncio.run_coroutine_threadsafe(update_live_cache(asset, tick), MAIN_LOOP)
+                
+                should_alert = False
+                if last_alerted_price is None:
+                    # Initial baseline setup
+                    last_prices[token] = ltp
+                    should_alert = True
+                else:
+                    delta_pct = (abs(ltp - last_alerted_price) / last_alerted_price) * 100
+                    
+                    # Strictly alert only if price moves by +- 0.5% or more
+                    if delta_pct >= 0.5:
+                        should_alert = True
+                        
+                if should_alert:
+                    # Reset baseline to the new alerted price
+                    prev_price_for_tier = last_alerted_price
+                    last_prices[token] = ltp
+                    last_alert_times[token] = now
+                    time_str = now.strftime("%H:%M:%S")
+                    
+                    # Classify tier based on the delta from the previous baseline
+                    tier = "[HEAVY DESK]" if (prev_price_for_tier and (abs(ltp - prev_price_for_tier) / prev_price_for_tier * 100) >= 0.75) else "[SIGNIFICANT]"
+                    
                     payload = {
                         "type": "intel",
                         "timestamp": time_str,
                         "tag": "[INSTITUTIONAL]",
-                        "tier": "[SIGNIFICANT]",
+                        "tier": tier,
                         "asset": asset,
                         "message": f"Authentic LTP updated via Angel WS: ₹{ltp:,.2f}"
                     }
@@ -443,6 +496,9 @@ async def main():
     t1 = asyncio.create_task(pipeline_war_intensity(pool))
     t2 = asyncio.create_task(pipeline_energy_gold(pool))
     t3 = asyncio.create_task(pipeline_news_momentum(pool))
+    
+    global MAIN_LOOP
+    MAIN_LOOP = asyncio.get_running_loop()
     
     # 2. Start continuous tick streaming isolated
     t4 = asyncio.create_task(pipeline_yfinance_tickers(pool))

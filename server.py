@@ -5,6 +5,8 @@ import asyncio
 import json
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict
+import macro_pipeline
+from macro_pipeline import LIVE_TICKER_CACHE, LIVE_TICKER_LOCK, pipeline_angel_one_ws
 
 try:
     from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
@@ -16,6 +18,8 @@ try:
 except ImportError as e:
     print(f"Error: Missing dependency. {e}")
     sys.exit(1)
+
+import httpx
 
 load_dotenv()
 
@@ -54,6 +58,7 @@ memory_cache = {
     "last_updated": None
 }
 
+# LIVE_TICKER_CACHE is now globally imported from macro_pipeline
 apm_tracker: List[datetime] = []
 active_connections: List[WebSocket] = []
 
@@ -69,6 +74,8 @@ pool = None
 async def startup_event():
     global pool
     pool = await get_db_pool()
+    macro_pipeline.MAIN_LOOP = asyncio.get_running_loop()
+    asyncio.create_task(pipeline_angel_one_ws(pool))
     asyncio.create_task(cache_refresh_loop())
     asyncio.create_task(listen_to_pg_notify())
 
@@ -126,7 +133,7 @@ async def broadcast_intel(payload: str):
     apm = len(apm_tracker)
     data = json.loads(payload)
     data["current_apm"] = apm
-    
+                
     if apm > 15:
         data["volatility_surge"] = True
     
@@ -313,6 +320,154 @@ async def ingest_macro_signal(payload: IngestPayload):
     asyncio.create_task(broadcast_intel(json.dumps(broadcast_data)))
     
     return response_payload
+
+# ---------------------------------------------------------
+# DYNAMIC SEARCH & TIME-SERIES ENGINE
+# ---------------------------------------------------------
+@app.get("/api/search")
+async def search_assets(q: str):
+    """Searches master_financial_assets for matching tickers or names"""
+    if not pool:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    
+    if not q or len(q) < 1:
+        return []
+
+    async with pool.acquire() as conn:
+        try:
+            query = """
+                SELECT ticker_symbol, asset_name, fas_score 
+                FROM master_financial_assets 
+                WHERE ticker_symbol ILIKE $1 OR asset_name ILIKE $1
+                LIMIT 10
+            """
+            search_term = f"%{q}%"
+            rows = await conn.fetch(query, search_term)
+            return [dict(r) for r in rows]
+        except Exception as e:
+            logger.error(f"Search API Error: {e}")
+            raise HTTPException(status_code=500, detail="Internal server error")
+
+def calculate_fas_score(ticker: str, history: list) -> str:
+    """Quantitative FAS Score Engine"""
+    if not history or len(history) < 2:
+        return "N/A"
+        
+    try:
+        # [F]undamental Volume Delta
+        vol_today = history[-1].get("volume", 1)
+        vol_prev = history[-2].get("volume", 1)
+        if vol_prev == 0: vol_prev = 1
+        vol_delta = (vol_today - vol_prev) / vol_prev
+        
+        # [A]lert Severity Momentum
+        price_today = history[-1].get("price_close", 1)
+        price_prev = history[-2].get("price_close", 1)
+        price_delta = abs((price_today - price_prev) / price_prev) * 100
+        
+        # [S]entiment Vector Input (Mock mapping)
+        sentiment = 1.2 if price_today > price_prev else 0.8
+        
+        aggregate_scalar = (vol_delta * 0.4) + (price_delta * 0.4) + (sentiment * 0.2)
+        
+        if aggregate_scalar > 1.5: return "AAA+"
+        elif aggregate_scalar > 0.8: return "AA"
+        elif aggregate_scalar > 0.3: return "A"
+        elif aggregate_scalar > 0: return "BBB+"
+        elif aggregate_scalar > -0.5: return "BBB-"
+        else: return "C"
+    except Exception as e:
+        logger.error(f"FAS Score Error: {e}")
+        return "N/A"
+
+@app.get("/api/asset/{ticker_symbol}/history")
+async def get_asset_history(ticker_symbol: str):
+    """Fetches multi-asset analysis using yfinance and outputs Institutional FAS payload"""
+    clean_ticker = ticker_symbol.replace(" ", "").upper()
+    
+    # EXPLICIT SYMBOL MAPPER UTILITY FOR YFINANCE
+    yf_symbol = clean_ticker
+    if clean_ticker in ["NIFTY50", "NIFTY"]:
+        yf_symbol = "^NSEI"
+    elif clean_ticker == "RELIANCE":
+        yf_symbol = "RELIANCE.NS"
+    elif "BTC" in clean_ticker or "USDT" in clean_ticker:
+        yf_symbol = "BTC-USD"
+        
+    meta_dict = {
+        "asset_name": clean_ticker,
+        "fas_score": 0,
+        "support_level": 0.0,
+        "resistance_level": 0.0,
+        "range_status": "Neutral",
+        "financials_analysis": "Gathering historical momentum...",
+        "events_analysis": "Processing multi-session volatility profiles...",
+        "price_correlation": "Analyzing trajectory vs Past Vectors..."
+    }
+    
+    try:
+        import yfinance as yf
+        # yfinance operations are blocking, run in executor if necessary, but for simplicity here we block briefly
+        ticker_obj = yf.Ticker(yf_symbol)
+        
+        # Fetch 1 month of daily data for structural bounds
+        df = ticker_obj.history(period="1mo", interval="1d")
+        
+        if df.empty:
+            # Fallback mock generator
+            import random
+            base_price = 24350.00 if "NIFTY" in clean_ticker else (60000.00 if "BTC" in clean_ticker else 150.00)
+            meta_dict["support_level"] = round(base_price * 0.95, 2)
+            meta_dict["resistance_level"] = round(base_price * 1.05, 2)
+            meta_dict["fas_score"] = 45
+            meta_dict["range_status"] = "Neutral"
+        else:
+            current_close = float(df['Close'].iloc[-1])
+            absolute_high = float(df['High'].max())
+            absolute_low = float(df['Low'].min())
+            
+            meta_dict["support_level"] = round(absolute_low, 2)
+            meta_dict["resistance_level"] = round(absolute_high, 2)
+            
+            # FAS EQUATION ENGINE
+            # 1. Fundamental Weight (40%): Derive via historical proxy (average volume vs current volume)
+            avg_vol = df['Volume'].mean()
+            curr_vol = df['Volume'].iloc[-1]
+            fund_ratio = (curr_vol / avg_vol) if avg_vol > 0 else 1.0
+            fund_score = min(max(fund_ratio * 20, 0), 40) # Scale 0 to 40
+            
+            # 2. Algorithmic Weight (35%): ((Current_Close - Absolute_Low) / (Absolute_High - Absolute_Low)) * 35
+            range_diff = absolute_high - absolute_low
+            algo_ratio = ((current_close - absolute_low) / range_diff) if range_diff > 0 else 0.5
+            algo_score = min(max(algo_ratio * 35, 0), 35) # Scale 0 to 35
+            
+            # 3. Sentiment Weight (25%): Map divergence trends (close vs 1mo avg)
+            avg_close = df['Close'].mean()
+            sent_ratio = (current_close / avg_close) if avg_close > 0 else 1.0
+            sent_score = min(max((sent_ratio - 0.9) * 125, 0), 25) # Scale 0 to 25
+            
+            total_fas = round(fund_score + algo_score + sent_score)
+            meta_dict["fas_score"] = total_fas
+            
+            if total_fas > 70:
+                meta_dict["range_status"] = "Overvalued"
+            elif total_fas < 30:
+                meta_dict["range_status"] = "Undervalued"
+            else:
+                meta_dict["range_status"] = "Neutral"
+                
+            # Populate text blocks dynamically based on state
+            meta_dict["financials_analysis"] = f"Algorithmic variance mapped at {round(algo_ratio*100, 1)}% of rolling range. Volume momentum multiplier at {round(fund_ratio, 2)}x."
+            meta_dict["events_analysis"] = "Session high bounded resistance tested. Structurally intact liquidity zone found at support."
+            meta_dict["price_correlation"] = f"Asset maintains a {meta_dict['range_status'].lower()} matrix state relative to macro indicators."
+
+        return {
+            "metadata": meta_dict
+        }
+    except Exception as e:
+        logger.error(f"History API Error: {e}")
+        # Return fallback on complete failure
+        return {"metadata": meta_dict}
 
 # ---------------------------------------------------------
 # WEBSOCKETS

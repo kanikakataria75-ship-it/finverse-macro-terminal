@@ -55,3 +55,58 @@ CREATE TRIGGER trg_log_macro_history
 AFTER UPDATE ON master_country_states
 FOR EACH ROW
 EXECUTE FUNCTION log_macro_history();
+
+-- --------------------------------------------------------
+-- NEW: FINANCIAL ASSETS & TIME SERIES ENGINE
+-- --------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS master_financial_assets (
+    ticker_symbol VARCHAR(20) PRIMARY KEY,
+    asset_name VARCHAR(100) NOT NULL,
+    general_analysis TEXT,
+    support_level NUMERIC(12, 2),
+    resistance_level NUMERIC(12, 2),
+    fas_score VARCHAR(10) DEFAULT 'N/A',
+    sectoral_dynamics JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_mfa_asset_name ON master_financial_assets (asset_name);
+CREATE INDEX IF NOT EXISTS idx_mfa_ticker ON master_financial_assets (ticker_symbol);
+
+CREATE TABLE IF NOT EXISTS asset_price_history (
+    log_id SERIAL PRIMARY KEY,
+    ticker_symbol VARCHAR(20) REFERENCES master_financial_assets(ticker_symbol) ON DELETE CASCADE,
+    price_close NUMERIC(12, 2) NOT NULL,
+    volume BIGINT,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_aph_ticker_time ON asset_price_history (ticker_symbol, recorded_at);
+
+-- Mock Data Insertion for Testing Search & Chart
+INSERT INTO master_financial_assets (ticker_symbol, asset_name, general_analysis, support_level, resistance_level, fas_score)
+VALUES 
+('NIFTY50', 'Nifty 50 Index', 'Top 50 Indian companies', 23000.00, 24500.00, 'STRONG'),
+('BTCUSD', 'Bitcoin to USD', 'Leading cryptocurrency', 55000.00, 65000.00, 'VOLATILE'),
+('RELIANCE', 'Reliance Industries Ltd', 'Indian conglomerate', 2800.00, 3100.00, 'STABLE'),
+('AAPL', 'Apple Inc.', 'Consumer electronics giant', 160.00, 190.00, 'STABLE'),
+('NVDA', 'NVIDIA Corporation', 'AI hardware leader', 100.00, 140.00, 'STRONG')
+ON CONFLICT (ticker_symbol) DO NOTHING;
+
+-- Mock Time Series Data for NIFTY50
+INSERT INTO asset_price_history (ticker_symbol, price_close, volume, recorded_at)
+SELECT 'NIFTY50', 
+       24000.00 + (random() * 200 - 100), 
+       (random() * 1000000)::bigint, 
+       CURRENT_TIMESTAMP - (i || ' hours')::interval
+FROM generate_series(1, 48) i
+ON CONFLICT DO NOTHING;
+
+-- Mock Time Series Data for BTCUSD
+INSERT INTO asset_price_history (ticker_symbol, price_close, volume, recorded_at)
+SELECT 'BTCUSD', 
+       60000.00 + (random() * 1000 - 500), 
+       (random() * 5000)::bigint, 
+       CURRENT_TIMESTAMP - (i || ' hours')::interval
+FROM generate_series(1, 48) i
+ON CONFLICT DO NOTHING;
