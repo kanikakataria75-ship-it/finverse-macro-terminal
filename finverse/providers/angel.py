@@ -21,6 +21,17 @@ def configured() -> bool:
     return all([ANGEL_API_KEY, ANGEL_CLIENT_ID, ANGEL_MPIN, ANGEL_TOTP])
 
 
+def _mute_smartapi():
+    """SmartAPI logs whole failed requests - MPIN, TOTP, API key - to the console and to
+    logs/<date>/app.log, and re-enables that file log in every constructor. Switch it off."""
+    try:
+        import logzero
+        logzero.logfile(None)
+        logzero.loglevel(logging.CRITICAL, update_custom_handlers=True)
+    except Exception:
+        pass
+
+
 _LOGIN_ATTEMPTED = False  # one login attempt per process, ever: repeated bad MPINs lock the broker account
 
 
@@ -45,6 +56,7 @@ async def run(health):
 
     loop = asyncio.get_running_loop()
     obj = SmartConnect(api_key=ANGEL_API_KEY)
+    _mute_smartapi()
     _LOGIN_ATTEMPTED = True
     try:
         session = await asyncio.to_thread(obj.generateSession, ANGEL_CLIENT_ID, ANGEL_MPIN, pyotp.TOTP(ANGEL_TOTP).now())
@@ -57,6 +69,7 @@ async def run(health):
         await asyncio.Event().wait()
     feed_token = obj.getfeedToken()
     sws = SmartWebSocketV2(session["data"]["jwtToken"], ANGEL_API_KEY, ANGEL_CLIENT_ID, feed_token)
+    _mute_smartapi()
     anchors: dict = {}
     pending: dict = {}
 

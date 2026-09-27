@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.2.2] - 2026-09-27
+
+### Fixed
+- Futures day moves (Brent, WTI, gold, silver, gas, grains…) are now measured on the actual front contract. Yahoo's continuous series splices contracts together, so on roll days the previous close came from the expiring contract (Brent showed −8.6% when the real move was −2.8%). The same fix corrects the move-vs-volatility z-score.
+
+### Security
+- The Angel One SmartAPI library logged entire failed login requests (MPIN, TOTP, API key) to the console and `logs/<date>/app.log`; that logging is now switched off.
+
 ## [4.2.1] - 2026-09-27
 
 ### Fixed

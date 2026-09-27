@@ -22,6 +22,8 @@ from ..util import finite
 
 log = logging.getLogger("finverse.markets")
 HIST_PICKLE = DATA_DIR / "closes.pkl"
+FUTURES = [s for s in SYMBOLS if s.endswith("=F")]
+FRONT_TTL = 6 * 3600
 
 RANGES = {
     "1D": ("1d", "5m"), "5D": ("5d", "15m"), "1M": ("1mo", "60m"), "3M": ("3mo", "1d"),
@@ -43,6 +45,8 @@ class Markets:
         self.live: dict[str, dict] = {}  # real-time overrides (Binance / Angel One)
         self._cache: dict[str, tuple[float, object]] = {}
         self.last_quote_ts = 0.0
+        self.fronts: dict[str, str] = {}  # continuous future -> current front contract, e.g. BZ=F -> BZZ26.NYM
+        self._fronts_ts = 0.0
 
     # ------------------------------------------------------------------ boot
     def load_cache(self):
@@ -97,17 +101,44 @@ class Markets:
         return rets.tail(n)
 
     # ---------------------------------------------------------------- quotes
+    def _resolve_fronts(self):
+        """Yahoo's continuous futures (BZ=F) splice contracts together, so on a roll day the
+        'previous close' belongs to the expiring contract and the % change is fake. Track the
+        actual front contract so the day's move can be measured on one contract."""
+        fronts = {}
+        for sym in FUTURES:
+            try:
+                u = yf.Ticker(sym).info.get("underlyingSymbol")
+                if u and u != sym:
+                    fronts[sym] = u
+            except Exception:
+                pass
+        return fronts
+
     async def refresh_quotes(self):
-        df = await asyncio.to_thread(_download, SYMBOLS, "5d", "1d")
+        if time.time() - self._fronts_ts > FRONT_TTL:
+            fronts = await asyncio.to_thread(self._resolve_fronts)
+            self._fronts_ts = time.time()
+            if fronts:
+                self.fronts = fronts
+        df = await asyncio.to_thread(_download, SYMBOLS + list(self.fronts.values()), "5d", "1d")
         if df is None or df.empty:
             raise RuntimeError("empty quote download")
         close = df["Close"]
         changed = {}
         for sym in close.columns:
+            if sym not in BY_SYM:
+                continue  # a front contract, used below
             s = close[sym].dropna()
             if len(s) < 2:
                 continue
             price, prev = float(s.iloc[-1]), float(s.iloc[-2])
+            front = self.fronts.get(sym)
+            if front in close.columns:
+                c = close[front].dropna()
+                # same contract trading now -> its own previous close is the honest one
+                if len(c) >= 2 and abs(float(c.iloc[-1]) / price - 1) < 0.003:
+                    prev = float(c.iloc[-2])
             if sym in self.live and time.time() - self.live[sym]["t"] < 120:
                 continue  # a real-time feed owns this symbol
             q = self._make_quote(sym, price, prev, src="YF", asof_day=str(s.index[-1].date()))
@@ -130,7 +161,7 @@ class Markets:
             "prev": finite(prev, 6), "chg": finite(chg, 6), "pct": finite(pct, 4),
             "src": src, "ts": int(time.time() * 1000), "asof_day": asof_day,
         }
-        q.update(self.stats(sym, price))
+        q.update(self.stats(sym, price, prev))
         return q
 
     def apply_live(self, sym: str, price: float, prev: float, src: str):
@@ -142,7 +173,7 @@ class Markets:
         return base
 
     # ----------------------------------------------------------------- stats
-    def stats(self, sym: str, price: float | None = None) -> dict:
+    def stats(self, sym: str, price: float | None = None, prev: float | None = None) -> dict:
         if self.closes.empty or sym not in self.closes:
             return {}
         s = self.closes[sym].dropna()
@@ -159,7 +190,8 @@ class Markets:
         ytd_base = s[s.index < pd.Timestamp(datetime.now().year, 1, 1)]
         r = s.pct_change().dropna()
         vol = float(r.tail(60).std()) if len(r) > 20 else None
-        last_ret = (p / float(s.iloc[-2]) - 1) if len(s) > 2 else 0.0
+        base = prev if prev else (float(s.iloc[-2]) if len(s) > 2 else None)
+        last_ret = (p / base - 1) if base else 0.0
         z = (last_ret / vol) if vol else None
         year = s.tail(252)
         return {
