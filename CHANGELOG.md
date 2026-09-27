@@ -2,6 +2,70 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.2.1] - 2026-09-27
+
+### Fixed
+- VEDA now starts listening when Finverse turns on (opt-out on the power-on screen) instead of waiting for a click.
+- Wake word recognises the many ways speech engines spell "Veda" (vada, vedas, wada, bheda, वेदा…) plus near-misses; "Finverse" also works.
+- Clap detection is attack-based and tolerant of room echo, quiet laptop mics and noisy rooms.
+- Questions are no longer cut off at the first pause; VEDA waits for a real pause before answering.
+- Oracle answers far more questions directly — Fed/RBI/ECB, inflation, jobs, bonds, news, calendar ("when is the next Fed meeting"), market mood, crypto, greetings/help — looks up any company by name, and understands natural what-ifs ("what if the rupee falls 5 percent").
+
+## [4.2.0 · Terrain] - 2026-09-27
+
+### Added
+- **Macro Terrain**: the Global Macro Radar is now a 3D extruded map — each country's height and colour encode the active metric, with a west-to-east rise when switching modes, hover lift + tooltip, click-through drawer, quake rings with light beams, floating chokepoint beacons, live labels on the biggest movers, orbit/zoom/reset, shadows and selective bloom. The flat map remains one click away (3D | 2D).
+- Maximize any panel (⤢ or double-click its title bar; Esc restores).
+
+### Fixed
+- Map tooltip/drawer crashed for countries whose conflict score is "insufficient coverage".
+
+## [4.1.0 · VEDA] - 2026-09-27
+
+### Added
+- **VEDA**, the voice of Finverse: wake by saying "Veda" (always-on recogniser, one-breath commands, barge-in with "Veda, stop"), by clapping twice, the V key or the mic button; optional auto-start from the power-on screen.
+- Natural neural voices (Microsoft Edge Read Aloud via `edge-tts`, free) served by `/api/voice/tts` with an on-disk cache and pre-rendered acknowledgements; browser voices as fallback.
+- Narrator (`analytics/speech.py`): conversational scripts built from Oracle facts — rounded numbers, trader units, context, correct currency-pair semantics.
+- Region situation reports in Oracle (Gulf, Middle East, Red Sea, Russia–Ukraine, Taiwan, India–Pakistan, Africa, Korea).
+- Particle avatar (`web/js/three/avatar.js`): a human bust assembled from neon dust with hologram lighting, audio-driven jaw, thinking halo and dissolve.
+
+### Fixed
+- Liquidations aggregate OKX + Bybit + Binance (Binance futures streams are silent on some networks); OKX contract specs fetched from whichever regional host answers.
+- Conflict Intensity Index measures the conflict *share* of each country's coverage (raw counts painted big-news countries as war zones).
+
+## [4.0.0 · Obsidian] - 2026-09-27
+
+A ground-up rebuild: new engine, new analytics, new interface. The v3 code is preserved in `legacy/`.
+
+### Security & correctness fixes
+- **Removed hardcoded ACLED credentials and EIA API key** from source (they had been pushed to a public repo — rotate them).
+- Fixed stored-XSS path: feed text was injected with `innerHTML`; every string is now rendered as text.
+- Removed the unauthenticated `/api/macro/ingest` endpoint; server binds to `127.0.0.1`; no wildcard CORS.
+- Angel One: started once (was launched twice → double login, duplicate alerts); opt-in via `ANGEL_ENABLED`; a failed login is never retried.
+- Liquidations now use the correct futures streams (the spot host never carried `!forceOrder@arr`), aggregated across OKX, Bybit and Binance.
+- Truth Social feed uses real status IDs and post timestamps; no more re-broadcasting the same post every 60s.
+- Removed every simulated value: random 1W/1M toggles, hardcoded Fed/CPI/NFP/"Market Mood" tiles, war-score baselines added on top of real data, discarded EIA responses, canned "intelligence" text.
+- Research: `key_findings.md` was empty because the study filtered `^GSPC` while the data used `SPY`; recomputed with bootstrap CIs (`tools/build_rhetoric_study.py`).
+
+### Engine
+- One command (`python run.py`), no Postgres: supervised asyncio feeds, in-process pub/sub, SQLite storage, live feed health.
+- New free data: US Treasury curve, NY Fed rates, BLS macro, 18-feed news wire with cross-source confirmation, Fed/RBI/ECB press, USGS & NASA EONET hazards, GDELT conflict share, Binance funding/OI/long-short, crypto Fear & Greed, CoinGecko global.
+
+### Analytics
+- Regime Compass, Global & India Pulse, σ-outlier detection, correlation matrix + break detector.
+- India Transmission Model with implied open, Scenario Simulator, portfolio stress tests.
+- Event Study Lab (15y, declustered, abnormal returns, bootstrap CIs).
+- Chokepoint Radar, Conflict Intensity Index (coverage share, bias-corrected).
+- Oracle analyst (explain / compare / scenario / regime / region situation reports) with optional local LLM.
+- Alerts engine (price, % move, σ, keyword, liquidation size, rhetoric heat) with browser + Telegram delivery.
+- Portfolio: live ₹ P&L across Indian and global assets, VaR/CVaR, beta, drawdown.
+
+### Interface
+- Cinematic Three.js intro, 3D globe home with day/night terminator and live exchange beacons.
+- Obsidian design system; seven F-key workspaces; command line with autocomplete; ticker & news tapes.
+- Security page with candles, fundamentals, macro betas and options analytics; 3D yield-curve surface.
+- **Finverse Voice**: clap twice → ask → spoken answer.
+
 ## [Phase 3] - 2026-07-03
 
 ### Added

@@ -1,4 +1,8 @@
 .env
 __pycache__/
 *.pyc
-logs/
+logs/
+data/
+.venv/
+# large research intermediates (regenerate with research/cleaning.py)
+research/analysis_output/clean_event_*.csv

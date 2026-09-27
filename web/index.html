@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Finverse · Macro Terminal</title>
+  <meta name="description" content="Finverse Obsidian — a premium macro intelligence terminal: markets, macro, geopolitics, rhetoric and crypto in one." />
+  <meta name="theme-color" content="#030407" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23060709'/%3E%3Cpath d='M22 46V18h22M22 32h17' stroke='%23d9b56d' stroke-width='5' fill='none'/%3E%3Ccircle cx='44' cy='46' r='3.5' fill='%237fe3ff'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@200;300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/experience.css" />
+  <link rel="stylesheet" href="/css/terminal.css" />
+  <script src="/vendor/d3.min.js"></script>
+  <script src="/vendor/topojson-client.min.js"></script>
+  <script src="/vendor/lightweight-charts.js"></script>
+  <script type="importmap">
+    { "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three/addons/" } }
+  </script>
+</head>
+<body>
+  <div class="ambient"></div>
+  <div class="grain"></div>
+  <div class="vignette"></div>
+
+  <main id="gate" class="view hidden"></main>
+  <main id="intro" class="view hidden"></main>
+  <main id="home" class="view hidden"></main>
+  <main id="terminal" class="view hidden"></main>
+
+  <div id="toasts" aria-live="polite"></div>
+  <div id="tip" role="tooltip"></div>
+  <noscript>Finverse requires JavaScript.</noscript>
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

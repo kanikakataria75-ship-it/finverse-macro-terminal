@@ -1,39 +1,82 @@
-# Finverse World Macro Terminal - System Map
+# Finverse — System Map (v4 · Obsidian)
 
-## Architecture Overview
+## Runtime
+One process: `python run.py` → Uvicorn → `finverse.api:app`. The FastAPI lifespan starts `engine.start()`,
+which launches every feed as a supervised asyncio task. The UI is static ES modules served from `web/`.
 
-**1. Frontend (`index.html`)**
-- Single-page application built with HTML, Vanilla JS, and Tailwind CSS runtime.
-- High-density, zero-padding trading floor aesthetic.
-- Components: Macro Asset Ticker Panel, Dynamic SVG Geopolitical Heatmap (D3.js), Live Video Console, Live Text Intel Feed, Ingestion Stream Status.
+```
+          ┌────────────────────────── providers (async tasks) ──────────────────────────┐
+Yahoo ───►│ markets.py   quotes 60s · 2y close matrix (data/closes.pkl) · charts · options │
+Binance ─►│ crypto.py    spot ticks · funding/OI/LS · OKX/Bybit/Binance liquidations      │
+Treasury ►│ macro.py     yield curve · NY Fed rates · BLS · calendar                      │
+RSS ─────►│ news.py      18 feeds → dedup (Jaccard) → tags → sentiment → importance       │
+Truth/CBs►│ rhetoric.py  post scoring + event-study context · hawk/dove stance · rates    │
+GDELT ───►│ geo.py       conflict share · USGS/EONET hazards · chokepoint radar           │
+Angel ───►│ angel.py     optional NSE ticks (opt-in, single login attempt)                │
+          └───────────────┬──────────────────────────────────────────────────────────────┘
+                          │ bus.publish(channel, data) / bus.emit(intel event)
+                          ▼
+   analytics/quant.py  regime · pulse · anomalies · correlation · transmission · scenario ·
+                       event_study · portfolio_risk        (engine runs every 60s)
+   analytics/alerts.py rules evaluated on quotes + intel events → ALERT (+ Telegram)
+   analytics/oracle.py grounded Q&A (explain / compare / scenario / regime / region / overview)
+   analytics/regions.py situation reports + speech-ready summaries
+                          │
+                          ▼
+   bus → /ws  (channels: quotes · intel · news · macro · analytics · rhetoric · geo · crypto · liq · health · alert)
+   store.py → data/finverse.db (kv cache · intel log 14d · alerts · watchlist · holdings)
+```
 
-**2. Backend Engine (`server.py`)**
-- FastAPI server running on Uvicorn.
-- **REST API (`/api/macro-metrics`)**: Serves asset data (price, 1d, 1w, 1m deltas) from PostgreSQL.
-- **WebSocket (`/ws/intel`)**: Publishes multi-stream data from background ingestion tasks.
+## Supervision & health
+`engine.every()` / `engine.forever()` wrap each job with exponential backoff and a `Health` record
+(status, message, last success, error count). `/api/health` feeds the boot log in the intro, the feed chip
+in the header and the Feed Health sheet. A job may return a number to schedule its next run sooner
+(the conflict sweep retries in 30 minutes when GDELT is unreachable).
 
-**3. Data Pipeline & Scraper (`macro_pipeline.py` & `truth_scraper.py`)**
-- `macro_pipeline.py`: Unified asynchronous worker replacing previous independent scripts. Consolidates `yfinance` baseline ingestion, Angel One WebSockets, Binance Liquidations, and ACLED Geopolitical map metrics. Stores data and historical baselines into a local PostgreSQL database (`finverse.macro_assets` and `finverse.macro_map_state`).
-- `truth_scraper.py`: Dedicated parser targeting Donald Trump's public HTML timeline at `trumpstruth.org`. Operates as an autonomous daemon checking for updates every 60 seconds. Caches the latest post state and force pushes it to FastAPI `/api/macro/ingest` to sustain visual telemetry when there are no new posts.
+## Intel event tags
+`NEWS` (importance ≥ 70) · `RHETORIC` · `CENTRAL BANK` · `SIGMA` (≥ 2.5σ) · `DIVERGENCE` (correlation break) ·
+`LIQUIDATION` (≥ $250k; SIGNIFICANT / HEAVY DESK ≥ $1M / SYSTEMIC WHALE ≥ $5M) · `GEOPOLITICS` (escalation) ·
+`HAZARD` (M6.5+) · `CHOKEPOINT` (status change) · `REGIME` (quadrant change) · `ALERT` · `INSTITUTIONAL` (Angel) · `SYSTEM`.
+Tiers: INFO · SIGNIFICANT · HEAVY · CRITICAL. Tape speed = events/minute; > 25 triggers the systemic frame.
 
-## Live Text Intel Feed Data Streams
+## Frontend (`web/`)
+```
+js/main.js            gate → intro → home → terminal orchestration
+js/core/              util (safe DOM builder, formatting) · state (snapshot + WS) · sound · world · voice
+js/three/             intro.js (particles + bloom) · globe.js (reusable globe) · surface.js (3D curve)
+js/panels/            common · macro · markets · india · crypto · geo · analytics · portfolio
+js/views/             terminal (shell, command line, workspaces) · home · overlays (security, brief, health, help, news)
+vendor/               three r170 · d3 7.9 · topojson · lightweight-charts 4.2 · world-atlas (local, no CDN at runtime)
+```
+Rules: strings enter the DOM only via `textContent`; each panel paints from `S` (state) and subscribes to
+bus channels; heavy renderers (globes, surface, regime canvas) run only while visible.
 
-- **[SYSTEM]**: Generates server status and database heartbeat pulses.
-- **[VOLATILITY]**: Real-time monitor tracking delta surges in major indices (NIFTY, GOLD, SILVER, BTC).
-- **[MACRO]**: Pulls active headlines via RSS feed parsing (Reuters/Bloomberg mock).
-- **[LIQUIDATION]**: Connects directly to Binance `!forceOrder@arr` websocket. Filters block trades > $5M.
-- **[DIVERGENCE]**: Rolling hourly check on inter-market macro divergences (DXY vs GOLD, etc.).
-- **[INSTITUTIONAL]**: SmartAPI Level 2 Depth anomalies for mega-cap NSE stocks.
-- **[TRUTH_SOCIAL]**: Real-time parsed posts from Donald Trump, graded by the sentiment classifier, feeding the **TRUMP METER** and live logs.
+## VEDA (voice)
+```
+mic ──► AudioWorklet clap detector ─┐
+mic ──► Web Speech (continuous) ────┴─► wake ("Veda" / clap×2 / V) ─► listen ─► POST /api/oracle
+                                                                               │
+          narrator (analytics/speech.py) ◄── facts ◄───────────────────────────┘
+                │ spoken text
+                ▼
+   POST /api/voice/tts (edge-tts neural, data/tts cache) ─► AudioContext ─► analyser ─► avatar jaw/glow
+```
+Frontend: `js/core/voice.js` (state machine: off → armed → listening → thinking → speaking → linger),
+`js/three/avatar.js` (particle bust). Her own voice echoing into the mic is ignored except her name or
+a short "stop".
 
-## 3-Tier Whale Categorization Algorithm
-- **Tier 1 [SIGNIFICANT]**: Normal institutional rebalancing.
-- **Tier 2 [HEAVY DESK]**: Aggressive position loading.
-- **Tier 3 [SYSTEMIC WHALE]**: Massive liquidity shock block > $10,000,000.
+## Key API
+`GET /api/snapshot` · `/api/health` · `/api/search?q=` · `/api/chart/{sym}?range=` · `/api/security/{sym}` ·
+`/api/options/{sym}` · `/api/news?q=&topic=&sym=&top=` · `/api/macro` · `/api/curve/surface` · `/api/geo` ·
+`/api/crypto` · `/api/rhetoric` · `/api/analytics` · `/api/correlation` · `POST /api/scenario` ·
+`/api/eventstudy?trigger=&op=&threshold=&target=` · `POST /api/oracle` · `/api/briefing(.md)` ·
+`/api/watchlist` · `/api/portfolio` · `/api/alerts` · `/api/voice/config` · `POST /api/voice/tts` · `WS /ws`
 
-## DEFERRED WORKFLOWS & BACKLOG
-| Feature | Priority | Status |
-|---|---|---|
-| Live NSE Option Activity & OI Delta Tracker | High | Deferred to Phase 3 |
-| Advanced Portfolio Position Manager | Low | Backlog |
-
+## Backlog
+| Feature | Notes |
+|---|---|
+| NSE option chain / OI via Angel One | needs the SmartAPI instrument master (~40 MB) |
+| FII/DII daily flows | NSE blocks scripted clients; needs a stable free source |
+| Offline speech-to-text | local faster-whisper as an alternative to the browser recogniser (fully private wake word) |
+| Multi-monitor desktop shell | Tauri wrapper with pop-out panels |
+| Exchange holiday calendars | sessions currently model regular hours only |

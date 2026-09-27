@@ -24,9 +24,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - [MACRO PIPELINE] -
 logger = logging.getLogger(__name__)
 
 # Authentication
-ACLED_EMAIL = "26f1001891@ds.study.iitm.ac.in"
-ACLED_PASSWORD = "Dhruv@1234"
-EIA_API_KEY = "ELCdnpnJjmRdegOgxxEL0WF8CA6hpa8MkpQEm5W9"
+ACLED_EMAIL = os.getenv("ACLED_EMAIL")
+ACLED_PASSWORD = os.getenv("ACLED_PASSWORD")
+EIA_API_KEY = os.getenv("EIA_API_KEY")
 
 # Database Configuration
 DB_HOST = "localhost"

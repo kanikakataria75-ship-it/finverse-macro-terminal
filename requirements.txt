@@ -1,0 +1,17 @@
+# Finverse Macro Terminal — Obsidian Edition (Python 3.11+)
+fastapi>=0.115
+uvicorn>=0.30
+httpx>=0.27
+websockets>=13
+yfinance>=0.2.54
+pandas>=2.2
+numpy>=1.26
+feedparser>=6.0
+beautifulsoup4>=4.12
+python-dotenv>=1.0
+edge-tts>=7.0          # VEDA's neural voice (free)
+
+# Optional — Angel One SmartAPI real-time NSE ticks (also set ANGEL_ENABLED=true in .env)
+# smartapi-python>=1.4
+# pyotp>=2.9
+# logzero>=1.7
