@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Futures day moves (Brent, WTI, gold, silver, gas, grains…) are now measured on the actual front contract. Yahoo's continuous series splices contracts together, so on roll days the previous close came from the expiring contract (Brent showed −8.6% when the real move was −2.8%). The same fix corrects the move-vs-volatility z-score.
+- Roll days are detected automatically and the analytics history is back-adjusted, so the India transmission model, implied open, pulse and event studies no longer read a contract roll as a price move.
 
 ### Security
 - The Angel One SmartAPI library logged entire failed login requests (MPIN, TOTP, API key) to the console and `logs/<date>/app.log`; that logging is now switched off.

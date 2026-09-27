@@ -47,12 +47,14 @@ class Markets:
         self.last_quote_ts = 0.0
         self.fronts: dict[str, str] = {}  # continuous future -> current front contract, e.g. BZ=F -> BZZ26.NYM
         self._fronts_ts = 0.0
+        self.rolls: dict[str, dict[str, float]] = {}  # future -> {roll day: back-adjustment ratio}
 
     # ------------------------------------------------------------------ boot
     def load_cache(self):
         if HIST_PICKLE.exists():
             try:
-                self.closes = pd.read_pickle(HIST_PICKLE)
+                self.rolls = store.kv_get("rolls") or {}
+                self.closes = self._roll_adjusted(pd.read_pickle(HIST_PICKLE), self.rolls)
                 log.info("history cache loaded: %s", self.closes.shape)
             except Exception as e:
                 log.warning("history cache unreadable: %s", e)
@@ -69,10 +71,52 @@ class Markets:
         closes = closes.groupby(level=0).last()
         if closes.shape[1] < 10:
             raise RuntimeError(f"history download returned only {closes.shape[1]} series")
-        self.closes = closes
-        closes.to_pickle(HIST_PICKLE)
+        closes.to_pickle(HIST_PICKLE)  # cached raw; roll adjustments are re-applied on load
+        self.closes = self._roll_adjusted(closes, self.rolls)
         log.info("history refreshed: %s", closes.shape)
         return closes.shape
+
+    @staticmethod
+    def _roll_adjusted(closes: pd.DataFrame, rolls: dict) -> pd.DataFrame:
+        """Back-adjust continuous futures: scale everything before a roll day by the ratio of the
+        new contract to the old one that day, so the roll itself is not a price move."""
+        if closes.empty or not rolls:
+            return closes
+        closes = closes.copy()
+        for sym, days in rolls.items():
+            if sym not in closes:
+                continue
+            col = closes[sym]
+            for day, ratio in days.items():
+                col = col.where(col.index >= pd.Timestamp(day), col * ratio)
+            closes[sym] = col
+        return closes
+
+    def _detect_rolls(self, close: pd.DataFrame):
+        """Find roll days in the last few sessions: the continuous series starts tracking the front contract."""
+        new = {}
+        for sym, front in self.fronts.items():
+            if sym not in close or front not in close:
+                continue
+            both = pd.concat([close[sym], close[front]], axis=1, keys=["c", "f"]).dropna()
+            if len(both) < 2:
+                continue
+            same = ((both["c"] / both["f"] - 1).abs() < 0.003).tolist()
+            if not same[-1] or all(same):
+                continue
+            i = len(same) - 1
+            while same[i - 1]:
+                i -= 1
+            day = str(both.index[i].date())
+            if day in self.rolls.get(sym, {}):
+                continue
+            ratio = float(both["f"].iloc[i - 1] / both["c"].iloc[i - 1])
+            self.rolls.setdefault(sym, {})[day] = ratio
+            new[sym] = {day: ratio}
+            log.info("futures roll: %s on %s (x%.4f)", sym, day, ratio)
+        if new:
+            store.kv_set("rolls", self.rolls)
+            self.closes = self._roll_adjusted(self.closes, new)
 
     def series(self, sym: str, n: int | None = None) -> pd.Series:
         if self.closes.empty or sym not in self.closes:
@@ -125,6 +169,7 @@ class Markets:
         if df is None or df.empty:
             raise RuntimeError("empty quote download")
         close = df["Close"]
+        self._detect_rolls(close)
         changed = {}
         for sym in close.columns:
             if sym not in BY_SYM:

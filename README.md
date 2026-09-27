@@ -197,7 +197,7 @@ URL flags: `?intro=0` skips the cinematic · `?to=terminal` opens straight into 
 
 ## Known limitations
 
-- Yahoo Finance quotes are delayed (~15 min for most exchanges). Day moves on futures are measured on the front contract, but the 2-year history still uses Yahoo's continuous series, so charts show a small step on contract-roll days.
+- Yahoo Finance quotes are delayed (~15 min for most exchanges). Futures moves are measured on the front contract and the analytics history is back-adjusted at every roll Finverse observes, but rolls from before its first run remain in the 2-year history as small steps.
 - GDELT rate-limits aggressively; the conflict index then falls back to the Finverse wire and is marked low-confidence.
 - Some networks receive no Binance futures stream data; OKX and Bybit keep the liquidation tape alive.
 - Market sessions model regular hours only (exchange holidays are not yet modelled).
